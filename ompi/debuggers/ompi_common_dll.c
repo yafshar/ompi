@@ -90,6 +90,7 @@ int ompi_fill_in_type_info(mqs_image *image, char **message)
 {
     char* missing_in_action;
     mpi_image_info * i_info = (mpi_image_info *)mqs_get_image_info (image);
+    *message = NULL;
 
     {
         mqs_type* qh_type = mqs_find_type( image, "opal_list_item_t", mqs_lang_c );
@@ -336,6 +337,10 @@ int ompi_fill_in_type_info(mqs_image *image, char **message)
                           qh_type, ompi_communicator_t, c_topo);
         ompi_field_offset(i_info->ompi_communicator_t.offset.c_keyhash,
                           qh_type, ompi_communicator_t, c_keyhash);
+	ompi_field_offset(i_info->ompi_communicator_t.offset.c_call_counters_up,
+			  qh_type, ompi_communicator_t, c_call_counters_up);
+	ompi_field_offset(i_info->ompi_communicator_t.offset.c_call_counters_down,
+			  qh_type, ompi_communicator_t, c_call_counters_down);
     }
     {
         mqs_type* qh_type, *cart_type, *graph_type, *dist_graph_type;
@@ -500,7 +505,6 @@ int ompi_fill_in_type_info(mqs_image *image, char **message)
     }
 
     /* All the types are here. Let's succesfully return. */
-    *message = NULL;
     return mqs_ok;
 
  type_missing:
@@ -509,9 +513,23 @@ int ompi_fill_in_type_info(mqs_image *image, char **message)
      * unable to extract the information we need from the pointers. We
      * did our best but here we're at our limit. Give up!
      */
-    *message = missing_in_action;
-    fprintf(stderr, "WARNING: Open MPI is unable to find debugging information about the \"%s\" type.  This can happen if Open MPI was built without debugging information, or was stripped after building.\n",
-           missing_in_action);
+
+    {
+        char *default_msg = 
+"The symbols and types in the Open MPI library used to extract debugging\n"
+"information cannot be found.  This is probably an Open MPI version or\n"
+"configuration problem.\n\n"
+"  Missing symbol/type: %s\n";
+        size_t len = strlen(default_msg) + strlen(missing_in_action) + 16;
+        *message = mqs_malloc(len);
+        if (NULL != *message) {
+            snprintf(*message, len, default_msg, missing_in_action);
+        } else {
+            *message = "Multiple errors occurred during the setup of the Open MPI debugging DLL such that even printing out a helpful error message is not possible.  Sorry!";
+        }
+    }
+
+    printf("The Open MPI debugger DLL was unable to find following symbol/type %s\n", missing_in_action);
     return err_missing_type;
 }
 

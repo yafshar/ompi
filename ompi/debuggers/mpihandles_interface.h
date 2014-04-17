@@ -1,7 +1,16 @@
+/* OPEN QUESTIONS:
+
+- should all Fortran mpif.h/mpi module INTEGER references be
+  mqs_taddr_t in case they're not the same size as C int?
+
+ */
+
+/*---------------------------------------------------------------------------*/
+
 /*
  * Copyright (c) 2007      High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
- * Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2007-2013 The University of Tennessee and The University of
  *                         Tennessee Research Foundation.  All rights reserved.
  * Copyright (c) 2012-2013 Inria.  All rights reserved.
@@ -16,6 +25,41 @@
  * Copyright (C) 1997-1998 Dolphin Interconnect Solutions Inc.
  *
  * $HEADER$
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ * 
+ * - Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * 
+ * - Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer listed
+ *   in this license in the documentation and/or other materials
+ *   provided with the distribution.
+ * 
+ * - Neither the name of the copyright holders nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ * 
+ * The copyright holders provide no reassurances that the source code
+ * provided does not infringe any patent, copyright, or any other
+ * intellectual property rights of third parties.  The copyright holders
+ * disclaim any liability to any recipient for claims brought against
+ * recipient by any third party for infringement of that parties
+ * intellectual property rights.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef __MPIDBG_INTERFACE_H__
@@ -121,6 +165,14 @@ struct mpidbg_handle_info_t {
     mqs_type *hi_cxx_status;
     /* Back-end type for MPI::Win */
     mqs_type *hi_cxx_win;
+
+    /* Fortran types */
+    /* Back-end type for INTEGER(KIND=MPI_ADDRESS_KIND) */
+    mqs_type *hi_f_aint;
+    /* Back-end type for INTEGER(KIND=MPI_OFFSET_KIND) */
+    mqs_type *hi_f_offset;
+    /* Back-end type for INTEGER(KIND=MPI_COUNT_KIND) */
+    mqs_type *hi_f_count;
 };
 
 enum mpidbg_return_codes_t {
@@ -176,14 +228,30 @@ struct mpidbg_name_map_t {
 /* MPI attribute / value pairs.  Include both a numeric and string
    key; pre-defined MPI keyvals (e.g., MPI_TAG_MAX) have a
    human-readable string name.  The string will be NULL for
-   non-predefined keyvals. */
+   non-predefined keyvals. 
+
+   The int keyval member is last to avoid "holes" in the memory
+   layout. */
 struct mpidbg_attribute_pair_t {
-    /* Keyval */
-    int keyval;
     /* Keyval name; will be non-NULL for attributes that have a
-       human-readable name (e.g., MPI predefined keyvals) */
+       human-readable name (i.e., MPI predefined keyvals) */
     char *keyval_name;
     /* Value */
+    char *value;
+    /* Keyval */
+    int keyval;
+};
+
+/* Arbitrary key=value string pairs.  These are used to pass
+   arbitrary, non-semantic information back about a given handle
+   instance.  I.e., an MPI implementation can add a list of these
+   key=value strings back to the debugger for a given handle.  The
+   debugger won't know what this information means, but it can display
+   the information in the debugger's UI. */
+struct mpidbg_keyvalue_pair_t {
+    /* String key name */
+    char *key_name;
+    /* String value */
     char *value;
 };
 
@@ -221,116 +289,75 @@ enum mpidbg_comm_capabilities_t {
 
 enum mpidbg_comm_info_bitmap_t {
     /* Predefined communicator if set (user-defined if not set) */
-    MPIDBG_COMM_INFO_PREDEFINED =      0x01,
+    MPIDBG_COMM_INFO_PREDEFINED =      0x001,
     /* Whether this communicator is a cartesian communicator or not
        (mutually exclusive with _GRAPH and _INTERCOMM) */
-    MPIDBG_COMM_INFO_CARTESIAN =       0x02,
+    MPIDBG_COMM_INFO_CARTESIAN =       0x002,
     /* Whether this communicator is a graph communicator or not
        (mutually exclusive with _CARTESIAN and _INTERCOMM) */
-    MPIDBG_COMM_INFO_GRAPH =           0x04,
+    MPIDBG_COMM_INFO_GRAPH =           0x004,
     /* If a cartesian or graph communicator, whether the processes in
        this communicator were re-ordered when the topology was
        assigned. */
-    MPIDBG_COMM_INFO_TOPO_REORDERED =  0x08,
+    MPIDBG_COMM_INFO_TOPO_REORDERED =  0x008,
+
     /* Whether this is an intercommunicator or not (this communicator
        is an intracommunicator if this flag is not yet). */
-    MPIDBG_COMM_INFO_INTERCOMM =       0x10,
+    MPIDBG_COMM_INFO_INTERCOMM =       0x010,
+
     /* This communicator has been marked for freeing by the user
        application if set */
-    MPIDBG_COMM_INFO_FREED_HANDLE =    0x20,
+    MPIDBG_COMM_INFO_FREED_HANDLE =    0x020,
     /* This communicator has actually been freed by the MPI
        implementation if set */
-    MPIDBG_COMM_INFO_FREED_OBJECT =    0x40,
+    MPIDBG_COMM_INFO_FREED_OBJECT =    0x040,
     /* The queried communicator is MPI_COMM_NULL */
-    MPIDBG_COMM_INFO_COMM_NULL =       0x80,
+    MPIDBG_COMM_INFO_COMM_NULL =       0x080,
+
+    /* The queried communicator is a C handle */
+    MPIDBG_COMM_INFO_HANDLE_C =        0x100,
+    /* The queried communicator is a C++ handle */
+    MPIDBG_COMM_INFO_HANDLE_CXX =      0x200,
+    /* The queried communicator is a F77/F90 integer handle */
+    MPIDBG_COMM_INFO_HANDLE_FINT =     0x400,
+
     /* The queried communicator has a distributed graph topology attached to it */
     MPIDBG_COMM_INFO_DIST_GRAPH =      0x00000400,
     /* Sentinel max value */
     MPIDBG_COMM_INFO_MAX
 };
 
-struct mpidbg_comm_info_t {
-    /* Name of the MPI_COMM */
-    char comm_name[MPIDBG_MAX_OBJECT_NAME];
-
-    /* Bit flags describing the communicator */
-    enum mpidbg_comm_info_bitmap_t comm_bitflags;
-
-    /* This process' rank within this communicator */
-    int comm_rank;
-    /* The communicator's size  */
-    int comm_size;
-
-    /* Number of processes in the local group */
-    int comm_num_local_procs;
-    /* Information about each process in the local group (in
-       communicator rank order, length: comm_num_local_procs) */
-    struct mpidbg_process_t *comm_local_procs;
-
-    /* For intercommunicators, the number of processes in the remote
-       group */
-    int comm_num_remote_procs;
-    /* For intercommunicators, information about each process in the
-       remote group (in communicator rank order, length:
-       comm_num_remote_procs) */
-    struct mpidbg_process_t *comm_remote_procs;
-
-    /* For cartesian communicators, the number of dimensions */
-    int comm_cart_num_dims;
-    /* For cartesian communicators, an array of dimension lengths
-       (length: cart_comm_num_dims) */
-    int *comm_cart_dims;
-    /* For cartesian communicators, an array of boolean values
-       indicating whether each dimension is periodic or not (length:
-       cart_comm_num_dims) */
-    int8_t *comm_cart_periods;
-
-    /* For graph communicators, the number of nodes */
-    int comm_graph_num_nodes;
-    /* For graph communicators, an array of the node degrees (length:
-       comm_graph_num_nodes) */
-    int *comm_graph_index;
-    /* For graph communicators, an array of the edges (length:
-       comm_graph_num_nodes) */
-    int *comm_graph_edges;
-
-    /* C handle */
-    mqs_taddr_t comm_c_handle;
-    /* Fortran handle; will be MPIDBG_ERR_UNAVAILABLE if currently
-       unavailable or MPIDBG_ERR_NOT_SUPPORTED if not supported */
-    int comm_fortran_handle;
-
-    /* Number of attributes defined on this communicator */
-    int comm_num_attrs;
-    /* Array of attribute keyval/value pairs defined on this
-       communicator (length: comm_num_attrs) */
-    struct mpidbg_attribute_pair_t *comm_attrs;
-
-    /* Number of ongoing requests within this communicator, or
-       MPIDBG_ERR_NOT_SUPPORTED */
-    int comm_num_pending_requests;
-    /* If comm_num_pending_requests != MPIDBG_ERR_NOT_SUPPORTED, an
-       array of ongoing request handles attached on this
-       communicator (length: comm_num_pending_requests) */
-    mqs_taddr_t *comm_pending_requests;
-
-    /* Number of MPI windows derived from this communicator, or
-       MPIDBG_ERR_NOT_SUPPORTED  */
-    int comm_num_derived_windows;
-    /* If comm_num_derived_windows != MPIDBG_ERR_NOT_SUPPORTED, an
-       array of window handles derived from this communicator (length:
-       com_num_derived_windows) */
-    mqs_taddr_t *comm_derived_windows;
-
-    /* Number of MPI files derived from this communicator, or
-       MPIDBG_ERR_NOT_SUPPORTED  */
-    int comm_num_derived_files;
-    /* If comm_num_derived_files != MPIDBG_ERR_NOT_SUPPORTED, an array
-       of file handles derived from this communicator (length:
-       comm_num_derived_files) */
-    mqs_taddr_t *comm_derived_files;
+/* Predefined handle -> address mappings.  This enum is the index to
+   an array indicating the handle addresses of the 4 pre-defined
+   communicators.  */
+enum mpidbg_predefined_comm_t {
+    MPIDBG_COMM_WORLD,
+    MPIDBG_COMM_SELF,
+    MPIDBG_COMM_PARENT,
+    MPIDBG_COMM_NULL,
+    MPIDBG_COMM_MAX
 };
 
+/* When a communicator is looked up in an MPI process, the following
+   handle is returned.  This handle can be used as a "base class" by
+   the DLL to cache additional information, if desired.  
+
+   This handle is a distinct type (rather than, for example, a typedef
+   to (void*)) to provide compile-time checking, ensuring that handles
+   are not queried from one type and used with another. */
+struct mpidbg_comm_handle_t {
+    /* Image that this handle is in */
+    mqs_image *image;
+    mqs_image_info *image_info;
+
+    /* Process that this handle is in */
+    mqs_process *process;
+    mqs_process_info *process_info;
+
+    /* Value of the communicator handle in the MPI process (passed in
+       via mpidbg_comm_query()) */
+    mqs_taddr_t c_comm;
+};
 
 /*-----------------------------------------------------------------------
  * Requests
@@ -353,15 +380,19 @@ enum mpidbg_request_info_bitmap_t {
     MPIDBG_REQUEST_INFO_MAX
 };
 
-struct mpidbg_request_info_t {
-    /* Bit flags describing the error handler */
-    enum mpidbg_request_info_bitmap_t req_bitflags;
+/* See note about mpidbg_comm_handle_t, above */
+struct mpidbg_request_handle_t {
+    /* Image that this handle is in */
+    mqs_image *image;
+    mqs_image_info *image_info;
 
-    /* C handle */
-    mqs_taddr_t req_c_handle;
-    /* Fortran handle; will be MPIDBG_ERR_UNAVAILABLE if currently
-       unavailable or MPIDBG_ERR_NOT_SUPPORTED if not supported */
-    int req_fortran_handle;
+    /* Process that this handle is in */
+    mqs_process *process;
+    mqs_process_info *process_info;
+
+    /* Value of the request handle in the MPI process (passed in via
+       mpidbg_request_query()) */
+    mqs_taddr_t c_request;
 };
 
 /*-----------------------------------------------------------------------
@@ -383,9 +414,19 @@ enum mpidbg_status_info_bitmap_t {
     MPIDBG_STATUS_INFO_MAX
 };
 
-struct mpidbg_status_info_t {
-    /* Bit flags describing the error handler */
-    enum mpidbg_status_info_bitmap_t status_bitflags;
+/* See note about mpidbg_comm_handle_t, above */
+struct mpidbg_status_handle_t {
+    /* Image that this handle is in */
+    mqs_image *image;
+    mqs_image_info *image_info;
+
+    /* Process that this handle is in */
+    mqs_process *process;
+    mqs_process_info *process_info;
+
+    /* Value of the status handle in the MPI process (passed in
+       via mpidbg_status_query()) */
+    mqs_taddr_t c_status;
 };
 
 /*-----------------------------------------------------------------------
@@ -424,47 +465,46 @@ enum mpidbg_errhandler_info_bitmap_t {
     MPIDBG_ERRH_INFO_FILE =            0x04,
     /* Window error handler if set */
     MPIDBG_ERRH_INFO_WINDOW =          0x08,
-    /* Callback is in C if set (Fortran if not set) */
+    /* Callback is in C if set */
     MPIDBG_ERRH_INFO_C_CALLBACK =      0x10,
+    /* Callback is in Fortran if set */
+    MPIDBG_ERRH_INFO_FORTRAN_CALLBACK =0x20,
+    /* Callback is in C++ if set */
+    MPIDBG_ERRH_INFO_CXX_CALLBACK =    0x40,
     /* This errorhandler has been marked for freeing by the user
        application if set */
-    MPIDBG_ERRH_INFO_FREED_HANDLE =    0x20,
+    MPIDBG_ERRH_INFO_FREED_HANDLE =    0x80,
     /* This errorhandler has actually been freed by the MPI
        implementation if set */
-    MPIDBG_ERRH_INFO_FREED_OBJECT =    0x40,
+    MPIDBG_ERRH_INFO_FREED_OBJECT =    0x100,
     /* Sentinel max value */
     MPIDBG_ERRH_INFO_MAX
 };
 
-struct mpidbg_errhandler_info_t {
-    /* String name; only relevant for predefined errorhandlers.  If
-       not a predefined errorhandler, eh_name[0] will be '\0'; */
-    char eh_name[MPIDBG_MAX_OBJECT_NAME];
+/* Predefined handle -> address mappings.  This enum is the index to
+   an array indicating the handle addresses of the pre-defined
+   errhandlers.  */
+enum mpidbg_predefined_errhandler_t {
+    MPIDBG_ERRHANDLER_ARE_FATAL,
+    MPIDBG_ERRHANDLER_RETURN,
+    MPIDBG_ERRHANDLER_THROW_EXCEPTIONS,
+    MPIDBG_ERRHANDLER_NULL,
+    MPIDBG_ERRHANDLER_MAX
+};
 
-    /* Bit flags describing the error handler */
-    enum mpidbg_errhandler_info_bitmap_t eh_bitflags;
+/* See note about mpidbg_comm_handle_t, above */
+struct mpidbg_errhandler_handle_t {
+    /* Image that this handle is in */
+    mqs_image *image;
+    mqs_image_info *image_info;
 
-    /* C handle */
-    mqs_taddr_t eh_c_handle;
-    /* Fortran handle; will be MPIDBG_ERR_UNAVAILABLE if currently
-       unavailable or MPIDBG_ERR_NOT_SUPPORTED if not supported */
-    int eh_fortran_handle;
+    /* Process that this handle is in */
+    mqs_process *process;
+    mqs_process_info *process_info;
 
-    /* Number of MPI handles that this error handler is attached to.
-       MPIDBG_ERR_NOT_SUPPORTED means that this information is not
-       supported by the DLL. */
-    int16_t eh_refcount;
-    /* If eh_refcount != MPIDBG_ERR_NOT_SUPPORTED, list of handles
-       that are using this error handler (length: eh_refcount). */
-    mqs_taddr_t *eh_handles;
-
-    /* Address of the user-defined error handler (will be 0 for
-       predefined error handlers).  Note that each of the 3 C
-       callbacks contain an MPI handle; the debugger will need to
-       figure out the appropriate size for these types depending on
-       the platform and MPI implementation.  This value will be NULL
-       if MPIDBG_ERRH_INFO_PREDEFINED is set on the flags. */
-    mqs_taddr_t eh_callback_func;
+    /* Value of the errhandler handle in the MPI process (passed in
+       via mpidbg_errhandler_query()) */
+    mqs_taddr_t c_errhandler;
 };
 
 /**************************************************************************
@@ -474,14 +514,12 @@ struct mpidbg_errhandler_info_t {
  * the DLL.
  **************************************************************************/
 
-/* Array of filenames instantiated IN THE MPI APPLICATION (*NOT* in
-   the DLL) that provides an set of locations where DLLs may be found.
-   The last pointer in the array will be a NULL sentinel value.  The
-   debugger can scan the entries in the array, find one that matches
-   the debugger (by examining a) whether the dlopen works or not, and
-   b) if the dlopen succeeds, examine mpidbg_dll_is_big_endian and
-   mpidbg_dll_bitness), and try to dynamically open the dl_filename.
-   Notes:
+/* Array of filenames instantiated IN THE MPI APPLICATION OR STARTER
+   PROCESS (*NOT* in the DLL) that provides an set of locations where
+   DLLs may be found.  The last pointer in the array will be a NULL
+   sentinel value.  The debugger will scan the entries in the array,
+   find one that matches the debugger (i.e., whether the dlopen works
+   or not), and try to dynamically open the dl_filename.  Notes:
 
    1. It is not an error if a dl_filename either does not exist or is
       otherwise un-openable (the debugger can just try the next
@@ -492,16 +530,6 @@ struct mpidbg_errhandler_info_t {
       a few prefix variations to find the DLL.
  */
 extern char **mpidbg_dll_locations;
-
-/* Global variable *in the DLL* describing whether this DLL is big or
-   little endian (1 = big endian, 0 = little endian).  This value is
-   valid immediately upon opening of the DLL. */
-extern char mpidbg_dll_is_big_endian;
-
-/* Global variable *in the DLL* describing the bitness of the DLL (8,
-   16, 32, 64, ...).  This value is valid immediately upon opening of
-   the DLL. */
-extern char mpidbg_dll_bitness;
 
 /* Global variable *in the DLL* describing the DLL's capabilties with
    regards to communicators.  This value is valid after a successfull
@@ -517,7 +545,7 @@ extern enum mpidbg_comm_capabilities_t mpidbg_comm_capabilities;
    variable or have a single entry that has a NULL string value.  This
    variable is not valid until after a successfull call to
    mpidbg_init_per_process().  */
-extern struct mpidbg_name_map_t *mpidbg_comm_name_map;
+extern mqs_taddr_t mpidbg_predefined_comm_map[MPIDBG_COMM_MAX];
 
 /* Global variable *in the DLL* describing the DLL's capabilties with
    regards to error handlers.  This value is valid after a successfull
@@ -526,8 +554,8 @@ extern enum mpidbg_errhandler_capabilities_t mpidbg_errhandler_capabilities;
 
 /* Global variable *in the DLL* that is an array of MPI error handler
    handle names -> handle mappings.  It is analogous to
-   mpidbg_comm_name_map; see above for details. */
-extern struct mpidbg_name_map_t *mpidbg_errhandler_name_map;
+   mpidbg_predefined_comm_map; see above for details. */
+extern mqs_taddr_t mpidbg_predefined_errhandler_map[MPIDBG_ERRHANDLER_MAX];
 
 /**************************************************************************
  * Functions
@@ -537,12 +565,12 @@ extern struct mpidbg_name_map_t *mpidbg_errhandler_name_map;
  * DLL infrastructure functions
  *-----------------------------------------------------------------------*/
 
-/* This function must be called once before any other mpidbg_*()
-   function is called, and before most other global mpidbg_* data is
-   read.  It is only necessary to call this function once for a given
-   debugger instantiation.  This function will initialize all mpidbg
-   global state, to include setting all relevant global capability
-   flags.
+/* This function will be called by the debugger exactly once before
+   any other mpidbg_*() function is called, and before most other
+   global mpidbg_* data is read.  It is only necessary to call this
+   function once for a given debugger instantiation.  This function
+   will initialize all mpidbg global state, to include setting all
+   relevant global capability flags.
 
    Parameters:
 
@@ -559,7 +587,7 @@ extern struct mpidbg_name_map_t *mpidbg_errhandler_name_map;
    MPIDBG_SUCCESS: if all initialization went well
    MPIDBG_ERR_*: if something went wrong.
 */
-int mpidbg_init_once(const mqs_basic_callbacks *callbacks);
+OMPI_DECLSPEC  int mpidbg_init_once(const mqs_basic_callbacks *callbacks);
 
 /*-----------------------------------------------------------------------*/
 
@@ -575,7 +603,7 @@ int mpidbg_init_once(const mqs_basic_callbacks *callbacks);
    MPIDBG_INTERFACE_VERSION
 */
 
-int mpidbg_interface_version_compatibility(void);
+OMPI_DECLSPEC  int mpidbg_interface_version_compatibility(void);
 
 /*-----------------------------------------------------------------------*/
 
@@ -588,8 +616,8 @@ int mpidbg_interface_version_compatibility(void);
    This function will return:
 
    A null-terminated string describing this DLL.
-*/
-char *mpidbg_version_string(void);
+*/   
+OMPI_DECLSPEC char *mpidbg_version_string(void);
 
 /*-----------------------------------------------------------------------*/
 
@@ -604,7 +632,7 @@ char *mpidbg_version_string(void);
    sizeof(mqs_taddr_t)
 */
 
-int mpidbg_dll_taddr_width(void);
+OMPI_DECLSPEC int mpidbg_dll_taddr_width(void);
 
 /*-----------------------------------------------------------------------*/
 
@@ -612,10 +640,10 @@ int mpidbg_dll_taddr_width(void);
    callbacks (probably in the mqs_image_info), and use those functions
    for accessing this image.
 
-   The DLL should use the mqs_put_image_info and mqs_get_image_info
+   The DLL should use the mqs_put_image_info() and mqs_get_image_info()
    functions to associate whatever information it wants to keep with
    the image (e.g., all of the type offsets it needs could be kept
-   here).  The debugger will call mqs_destroy_image_info when it no
+   here).  The debugger will call mqs_destroy_image_info() when it no
    longer wants to keep information about the given executable.
 
    This will be called once for each executable image in the parallel
@@ -634,7 +662,7 @@ int mpidbg_dll_taddr_width(void);
    IN/OUT: handle_types: a pointer to a pre-allocated struct
                          containing mqs_types for each of the MPI
                          handle types.  Must be filled in with results
-                         from mqs_find_type for each MPI handle type.
+                         from mqs_find_type() for each MPI handle type.
 
    This function will return:
 
@@ -645,7 +673,7 @@ int mpidbg_dll_taddr_width(void);
                    mpidbg_finalize_per_image()).
    MPIDBG_ERR_*: if something went wrong.
 */
-int mpidbg_init_per_image(mqs_image *image,
+OMPI_DECLSPEC int mpidbg_init_per_image(mqs_image *image,
                           const mqs_image_callbacks *callbacks,
                           struct mpidbg_handle_info_t *handle_types);
 
@@ -660,7 +688,8 @@ int mpidbg_init_per_image(mqs_image *image,
    IN: image: the application image.
    IN: image_info: the info associated with the application image.
 */
-void mpidbg_finalize_per_image(mqs_image *image, mqs_image_info *image_info);
+OMPI_DECLSPEC void mpidbg_finalize_per_image(mqs_image *image, 
+                                             mqs_image_info *image_info);
 
 /*-----------------------------------------------------------------------*/
 
@@ -692,8 +721,8 @@ void mpidbg_finalize_per_image(mqs_image *image, mqs_image_info *image_info);
                   or deallocated by the DLL. This applies to all of
                   the callback tables.
    IN/OUT: handle_types: the same handle_types that was passed to
-                         mqs_init_per_image.  It can be left unaltered
-                         if the results from mqs_init_per_image were
+                         mqs_init_per_image().  It can be left unaltered
+                         if the results from mqs_init_per_image() were
                          sufficient, or modified if necessary to be
                          specific to this process.
 
@@ -706,7 +735,7 @@ void mpidbg_finalize_per_image(mqs_image *image, mqs_image_info *image_info);
                    mpidbg_finalize_per_process()).
    MPIDBG_ERR_*: if something went wrong.
 */
-int mpidbg_init_per_process(mqs_process *process,
+OMPI_DECLSPEC  int mpidbg_init_per_process(mqs_process *process, 
                             const mqs_process_callbacks *callbacks,
                             struct mpidbg_handle_info_t *handle_types);
 
@@ -721,7 +750,7 @@ int mpidbg_init_per_process(mqs_process *process,
    IN: process: the application process.
    IN: process_info: the info associated with the application process.
 */
-void mpidbg_finalize_per_process(mqs_process *process,
+OMPI_DECLSPEC  void mpidbg_finalize_per_process(mqs_process *process,
                                  mqs_process_info *process_info);
 
 /*-----------------------------------------------------------------------
@@ -729,10 +758,34 @@ void mpidbg_finalize_per_process(mqs_process *process,
  * MPI_Comm
  *-----------------------------------------------------------------------*/
 
-/* Query a specific MPI_Comm handle and, if found and valid, allocate
-   a new instance of the mpidbg_comm_info_t struct and all of its
-   internal data, and fill it in with information about the underlying
-   corresponding MPI communicator object.
+/* Query a specific MPI_Comm handle and, if found and valid, return a
+   handle that can subsequently be queried for a variety of
+   information about this communicator.
+
+   Note that the returned handle is only valid at a specific point in
+   time.  If the MPI process advances after the handle is returned,
+   the handle should be considered stale and should therefore be
+   freed.  This function should be invoked again to obtain a new
+   handle.
+
+   The intent behind this design (query the communicator once and
+   return a handle for subsequent queries) is to allow a DDL to scan
+   the MPI process *once* for all the relevant information about the
+   communicator and cache it locally (presumably on the returned
+   handle).  The subsequent queries are then all local, not involving
+   the probing the MPI process -- which chould be somewhat cheaper /
+   faster / easier to implement.
+
+   Of course, a DLL is free to cache only the communicator value in
+   the handle and actually probe the MPI process in any of the
+   subsequent query functions, if desired.  To be clear: this design
+   *allows* for the pre-caching of all the MPI process communicator
+   data, but does not mandate it.
+
+   Upon successful return (i.e., returning MPIDBG_SUCCESS), the
+   returned comm_handle->c_comm will equal the c_comm parameter value.
+   The caller must also eventually free the returned handle via
+   mpidbg_comm_handle_free().
 
    Parameters:
 
@@ -741,79 +794,250 @@ void mpidbg_finalize_per_process(mqs_process *process,
    IN: process: process
    IN: process_info: process info that was previously "put"
    IN: comm: communicator handle
-   OUT: info: pointer to be filled with a newly-allocated struct
-              mpidbg_comm_info_t
+   OUT: comm_handle: handle to be passed to the query functions (below)
 
    This function will return:
 
-   MPIDBG_SUCCESS: if the handle is valid, was found, and the info
-                   parameter was filled in successfully.
+   MPIDBG_SUCCESS: if the communicator handle is valid, was found, and
+                   the OUT parameter was filled in successfully.
    MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
-   MPIDBG_ERR_UNSUPPORTED: if this function is unsupported.
+   MPIDBG_ERR_STALE: if the handle was previously valid, but is now stale.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
 */
-int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
-                      mqs_process *process, mqs_process_info *process_info,
-                      mqs_taddr_t c_comm, struct mpidbg_comm_info_t **info);
 
-/* Query function to turn a Fortran INTEGER handle into its equivalent
-   C handle (that can then be queried with mpidbg_comm_query()).
-   mqs_taddr_t is used in order to guarantee to be large enough to
-   hold a Fortran INTEGER.
+OMPI_DECLSPEC int mpidbg_comm_query(mqs_image *image, 
+                      mqs_image_info *image_info, 
+                      mqs_process *process, 
+                      mqs_process_info *process_info,
+                      mqs_taddr_t comm, 
+                      struct mpidbg_comm_handle_t **handle);
+
+/* Free a handle returned by the mpidbg_comm_query() function.
 
    Parameters:
 
-   IN: image: image
-   IN: image_info: image info that was previously "put"
-   IN: process: process
-   IN: process_info: process info that was previously "put"
-   IN: f77_comm: a zero-padded Fortran integer containing the Fortran
-                 handle of the communicator.
-   OUT: c_comm: a C handle suitable to pass to mpidbg_comm_query().
+   IN: handle: handle previously returned by mpidbg_comm_query()
 
-   This function returns:
+   This function will return:
 
-   MPIDBG_SUCCESS: if the handle is valid, was found, and the c_comm
-                   parameter was filled in successfully.
+   MPIDBG_SUCCESS: if the handle is valid and was freed successfully.
    MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
-   MPIDBG_ERR_UNSUPPORTED: if this function is unsupported.
 */
-int mpidbg_comm_f2c(mqs_image *image, mqs_image_info *image_info,
-                    mqs_process *process, mqs_process_info *process_info,
-                    mqs_taddr_t f77_comm, mqs_taddr_t *c_comm);
+int mpidbg_comm_handle_free(struct mpidbg_comm_handle_t *handle);
 
-/* Query function to turn a C++ handle into its equivalent C handle
-   (that can then be queried with mpidbg_comm_query()).  Pass the
-   pointer to the object as the cxx_comm (because we can't pass the
-   object itself); we return the C handle.
+/* Query a handle returned by mpidbg_comm_query() and, if found and
+   valid, return basic information about the original communicator.
 
-   --> JMS Need more discussion here -- George has some opinion.  He
-       thinks we don't need this.
    Parameters:
 
-   IN: image: image
-   IN: image_info: image info that was previously "put"
-   IN: process: process
-   IN: process_info: process info that was previously "put"
-   IN: cxx_comm: a pointer to the MPI handle object
-   IN: comm_type: one of 0, MPIDBG_COMM_INFO_CARTESION,
-                  MPIDBG_COMM_INFO_GRAPH, or
-                  MPIDBG_COMM_INFO_INTERCOMM indicating whether the
-                  object is an MPI::Comm, MPI::Cartcomm,
-                  MPI::Graphcomm, or MPI::Intercomm.
-   OUT: c_comm: a C handle suitable to pass to mpidbg_comm_query().
+   IN: handle: handle returned by mpidbg_comm_query()
+   OUT: comm_name: string name of the communicator, max of
+        MPIDBG_MAX_OBJECT_NAME characters, \0-terminated if less than
+        MPIDBG_MAX_OBJECT_NAME characters.
+   OUT: comm_bitflags: bit flags describing the communicator
+   OUT: comm_rank: rank of this process in this communicator
+   OUT: comm_size: total number of processes in this communicator
+   OUT: comm_fortran_handle: INTEGER Fortran handle corresponding to
+        this communicator, or MPIDBG_ERR_UNAVAILABLE if currently
+        unavailable, or MPIDBG_ERR_NOT_SUPPORTED if not supported
+   OUT: comm_cxx_handle: Pointer to C++ handle corresponding to
+        this communicator, or MPIDBG_ERR_UNAVAILABLE if currently
+        unavailable, or MPIDBG_ERR_NOT_SUPPORTED if not supported
+   OUT: comm_extra_info: Array of pointers to mpidbg_keyvalue_pair_t
+        instances for extra info that this implementation wants to
+        return to the tool about this communicator.  It is likely that
+        the tool will not "understand" what these key=value pairs will
+        mean, but at a minimum, they should be suitable for display.
 
-   This function returns:
+   *comm_extra_info can be NULL if there are no key/value pairs to
+   return.  If non-NULL, *comm_extra_info will point to an array of
+   pointers to individual mpigb_keyvalue_pair_t instances.  Note that
+   the memory associated with *comm_extra_info is associated with the
+   handle, and will be freed when mpidb_comm_handle_free() is invoked.
 
-   MPIDBG_SUCCESS: if the handle is valid, was found, and the c_comm
-                   parameter was filled in successfully.
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid, was found, and the OUT
+                   parameters were filled in successfully.
    MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
-   MPIDBG_ERR_UNSUPPORTED: if this function is unsupported.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
 */
-int mpidbg_comm_cxx2c(mqs_image *image, mqs_image_info *image_info,
-                      mqs_process *process, mqs_process_info *process_info,
-                      mqs_taddr_t cxx_comm,
-                      enum mpidbg_comm_info_bitmap_t comm_type,
-                      mqs_taddr_t *c_comm);
+OMPI_DECLSPEC extern int mpidbg_comm_query_basic(
+                      struct mpidbg_comm_handle_t *handle,
+                      char comm_name[MPIDBG_MAX_OBJECT_NAME],
+                      enum mpidbg_comm_info_bitmap_t *comm_bitflags,
+                      int *comm_rank,
+                      int *comm_size,
+                      int *comm_fortran_handle,
+                      mqs_taddr_t *comm_cxx_handle,
+                      struct mpidbg_keyvalue_pair_t ***comm_extra_info);
+
+/* Query a handle returned by mpidbg_comm_query() and, if found and
+   valid, return information about the MPI processes in this
+   communicator.
+
+   All arrays returned in OUT variables are allocated by this
+   function, but are the responsibility of the caller to be freed.
+
+   Parameters:
+
+   IN: comm_handle: handle returned by mpidbg_comm_query()
+   OUT: comm_num_local_procs: filled with the length of the
+        comm_local_procs OUT array.
+   OUT: comm_local_procs: filled with a pointer to an array of
+        mpidbg_process_t instances describing the local processes in
+        this communicator.  
+   OUT: comm_num_remote_procs: filled with the length of the
+        comm_remote_procs OUT array.  Will be 0 if the communicator is
+        not an intercommunicator.
+   OUT: comm_remote_procs: filled with a pointer to an array of
+        mpidbg_process_t instances describing the local processes in
+        this communicator.  Will be NULL if the communicator is not an
+        intercommunicator.
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid, was found, and the OUT
+                   parameters were filled in successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
+*/
+int mpidbg_comm_query_procs(struct mpidbg_comm_handle_t *handle,
+                            int *comm_num_local_procs,
+                            struct mpidbg_process_t **comm_local_procs,
+                            int *comm_num_remote_procs,
+                            struct mpidbg_process_t **comm_remote_procs);
+
+/* Query a handle returned by mpidbg_comm_query() and, if found and
+   valid, return information about the topology associated with the
+   communicator (if any).  It is not an error to call this function
+   with communicators that do not have associated topologies; such
+   communicators will still return MPIDBG_SUCCESS but simply return a
+   value of 0 in the comm_out_length OUT parameter.
+
+   All arrays returned in OUT variables are allocated by this
+   function, but are the responsibility of the caller to be freed.
+
+   Parameters:
+
+   IN: comm_handle: handle returned by mpidbg_comm_query()
+   OUT: comm_out_length: 
+        - For cartesian communicators, filled with the number of
+          dimensions.
+        - For graph communicators, filled with the number of nodes.
+        - For all other communicators, filled with 0.
+   OUT: comm_cart_dims_or_graph_indexes: 
+        - For cartesian communicators, filled with a pointer to an
+          array of length *comm_out_length representing the dimenstion
+          lengths.
+        - For graph communicators, filled with a pointer to an array
+          of length *comm_out_length representing the node degrees.
+        - For all other communicators, filled with NULL.
+   OUT: comm_cart_periods_or_graph_edges:
+        - For cartesian communicators, filled with a pointer to an
+          array of length *comm_out_length representing whether each
+          dimension is periodic or not.
+        - For graph communicators, filled with a pointer to an array
+          of length *comm_out_length representing the array of edges.
+        - For all other communicators, filled with NULL.
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid, was found, and the OUT
+                   parameters were filled in successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
+*/
+int mpidbg_comm_query_topo(struct mpidbg_comm_handle_t *handle,
+                           int *comm_out_length,
+                           int **comm_cart_dims_or_graph_indexes,
+                           int **comm_cart_periods_or_graph_edges);
+
+/* Query a handle returned by mpidbg_comm_query() and, if found and
+   valid, return information about the attributes associated with the
+   communicator (if any).  It is not an error to call this function
+   with communicators that do not have associated attributes; such
+   communicators will still return MPIDBG_SUCCESS but simply return a
+   value of 0 in the comm_attrs_length OUT parameter.
+
+   All arrays returned in OUT variables are allocated by this
+   function, but are the responsibility of the caller to be freed.
+
+   Parameters:
+
+   IN: comm_handle: handle returned by mpidbg_comm_query()
+   OUT: comm_num_attrs: length of the array returned in comm_attrs;
+         if 0, the value of comm_attrs is undefined.
+   OUT: comm_attrs: array of length comm_attrs_length containing
+         keyval/value pairs.
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid, was found, and the OUT
+                   parameters were filled in successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
+*/
+int mpidbg_comm_query_attrs(struct mpidbg_comm_handle_t *comm_handle,
+                            int *comm_num_attrs,
+                            struct mpidbg_attribute_pair_t *comm_attrs);
+
+/* Query a handle returned by mpidbg_comm_query() and, if found and
+   valid, return an array of pending requests on this communicator.
+
+   All arrays returned in OUT variables are allocated by this
+   function, but are the responsibility of the caller to be freed.
+
+   Parameters:
+
+   IN: comm_handle: handle returned by mpidbg_comm_query()
+   OUT: comm_num_requests: filled with the length of the
+        comm_pending_requests array.
+   OUT: comm_requests: filled with a pointer to an array of pending
+        requests on this communicator.
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid, was found, and the OUT
+                   parameters were filled in successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
+*/
+int mpidbg_comm_query_requests(struct mpidbg_comm_handle_t *handle,
+                               int *comm_num_requests,
+                               mqs_taddr_t **comm_pending_requests);
+
+/* Query a handle returned by mpidbg_comm_query() and, if found and
+   valid, return arrays of MPI_File and MPI_Win handles that were
+   derived from this communicator.
+
+   All arrays returned in OUT variables are allocated by this
+   function, but are the responsibility of the caller to be freed.
+
+   Parameters:
+
+   IN: comm_handle: handle returned by mpidbg_comm_query()
+   OUT: comm_num_derived_files: filled with the length of the
+        comm_derived_files array.
+   OUT: comm_derived_files: filled with a pointer to an array of
+        MPI_File handles derived from this communicator.
+   OUT: comm_num_derived_windows: filled with the length of the
+        comm_derived_windows array.
+   OUT: comm_derived_windows: filled with a pointer to an array of
+        MPI_Win handles derived from this communicator.
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid, was found, and the OUT
+                   parameters were filled in successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
+*/
+int mpidbg_comm_query_derived(struct mpidbg_comm_handle_t *handle,
+                              int *comm_num_derived_files,
+                              mqs_taddr_t **comm_derived_files,
+                              int *comm_num_derived_windows,
+                              mqs_taddr_t **comm_derived_windows);
 
 /*-----------------------------------------------------------------------
  * MPI handle query functions
@@ -821,22 +1045,132 @@ int mpidbg_comm_cxx2c(mqs_image *image, mqs_image_info *image_info,
  *-----------------------------------------------------------------------*/
 
 /* These functions are analogous to the mpidbg_comm_* functions, but
-   for MPI_Errhandler.  Note that there is no need for a
-   "errhandler_type" argument to the cxx2c function because
-   MPI::Errhandler has no derived classes. */
-
-int mpidbg_errhandler_query(mqs_image *image, mqs_image_info *image_info,
-                            mqs_process *process, mqs_process_info *process_info,
+   for MPI_Errhandler. */
+int mpidbg_errhandler_query(mqs_image *image, 
+                            mqs_image_info *image_info, 
+                            mqs_process *process, 
+                            mqs_process_info *process_info,
                             mqs_taddr_t errhandler,
-                            struct mpidbg_errhandler_info_t **info);
-int mpidbg_errhandler_f2c(mqs_image *image, mqs_image_info *image_info,
-                          mqs_process *process, mqs_process_info *process_info,
-                          mqs_taddr_t f77_errhandler,
-                          mqs_taddr_t *c_errhandler);
-int mpidbg_errhandler_cxx2c(mqs_image *image, mqs_image_info *image_info,
-                            mqs_process *process, mqs_process_info *process_info,
-                            mqs_taddr_t cxx_errhandler,
-                            mqs_taddr_t *c_errhandler);
+                            struct mpidbg_errhandler_handle_t **handle);
+
+/* Free a handle returned by the mpidbg_errhandler_query() function.
+
+   Parameters:
+
+   IN: handle: handle previously returned by mpidbg_errhandler_query()
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid and was freed successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+*/
+int mpidbg_errhandler_handle_free(struct mpidbg_errhandler_handle_t *handle);
+
+/* Query a handle returned by mpidbg_errhandler_query() and, if found
+   and valid, return basic information about the original errhandler.
+
+   Parameters:
+
+   IN: handle: handle returned by mpidbg_comm_query()
+   OUT: errhandler_name: string name of the communicator, max of
+        MPIDBG_MAX_OBJECT_NAME characters, \0-terminated if less than
+        MPIDBG_MAX_OBJECT_NAME characters.
+   OUT: errhandler_bitflags: bit flags describing the communicator
+   OUT: errhandler_fortran_handle: INTEGER Fortran handle
+        corresponding to this communicator, or MPIDBG_ERR_UNAVAILABLE
+        if currently unavailable, or MPIDBG_ERR_NOT_SUPPORTED if not
+        supported
+   OUT: errhandler_cxx_handle: Pointer to C++ handle corresponding to
+        this communicator, or MPIDBG_ERR_UNAVAILABLE if currently
+        unavailable, or MPIDBG_ERR_NOT_SUPPORTED if not supported
+   OUT: errhandler_extra_info: Array of pointers to
+        mpidbg_keyvalue_pair_t instances for extra info that this
+        implementation wants to return to the tool about this
+        errhandler.  It is likely that the tool will not "understand"
+        what these key=value pairs will mean, but at a minimum, they
+        should be suitable for display.
+
+   *errhandler_extra_info can be NULL if there are no key/value pairs
+   to return.  If non-NULL, *errhandler_extra_info will point to an
+   array of pointers to individual mpigb_keyvalue_pair_t instances.
+   Note that the memory associated with *errhandler_extra_info is
+   associated with the handle, and will be freed when
+   mpidb_errhandler_handle_free() is invoked.
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid, was found, and the OUT
+                   parameters were filled in successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
+*/
+int mpidbg_errhandler_query_basic(
+            struct mpidbg_errhandler_handle_t *handle,
+            char errhandler_name[MPIDBG_MAX_OBJECT_NAME],
+            enum mpidbg_errhandler_info_bitmap_t *errhandler_bitflags,
+            int *errhandler_fortran_handle,
+            mqs_taddr_t *errhandler_cxx_handle,
+            struct mpidbg_keyvalue_pair_t ***errhandler_extra_info);
+
+/* Query a handle returned by mpidbg_errhandler_query() and, if found
+   and valid, return an array of MPI handle that are using this error
+   handler.  The type of the MPI handle returned will be indicated by
+   one of the following set in the errhandler bitmap flags:
+
+   - MPIDBG_ERRH_INFO_COMMUNICATOR
+   - MPIDBG_ERRH_INFO_FILE
+   - MPIDBG_ERRH_INFO_WINDOW
+
+   All arrays returned in OUT variables are allocated by this
+   function, but are the responsibility of the caller to be freed.
+
+   Parameters:
+
+   IN: errhandler_handle: handle returned by mpidbg_errhandler_query()
+   OUT: errhandler_num_handles: filled with the length of the
+        errhandler_derived_files array.
+   OUT: erhandler_handles: filled with a pointer to an array of
+        MPI handles that are using this errhandler.
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid, was found, and the OUT
+                   parameters were filled in successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
+*/
+int mpidbg_errhandler_query_handles(struct mpidbg_errhandler_handle_t *handle,
+                                    int *errhandler_num_handles,
+                                    mqs_taddr_t **errhandler_handles);
+
+/* Query a handle returned by mpidbg_errhandler_query() and, if found
+   and valid, return the function pointer callback on this errhandler.
+   The signature of the function pointer returned is determined by the
+   combintion of errhandler bitmap flags:
+
+   - MPIDBG_ERRH_INFO_COMMUNICATOR, or MPIDBG_ERRH_INFO_FILE, or
+     MPIDBG_ERRH_INFO_WINDOW
+   - MPIDBG_ERRH_INFO_C_CALLBACK, or MPIDBG_ERRH_INFO_FORTRAN_CALLBACK, or
+     MPIDBG_ERRH_INFO_CXX_CALLBACK
+
+   Note that the output function pointer will be NULL if
+   MPIDBG_ERRH_INFO_PREDEFINED is set on the errhandler bitmap flags.
+
+   Parameters:
+
+   IN: errhandler_handle: handle returned by mpidbg_errhandler_query()
+   OUT: errhandler_func_ptr: filled with the function pointer to the
+        callback function.
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid, was found, and the OUT
+                   parameters were filled in successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+   MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
+*/
+int mpidbg_errhandler_query_callback(struct mpidbg_errhandler_handle_t *handle,
+                                     mqs_taddr_t *errhandler_func_ptr);
 
 /*-----------------------------------------------------------------------
  * MPI handle query functions
@@ -845,19 +1179,25 @@ int mpidbg_errhandler_cxx2c(mqs_image *image, mqs_image_info *image_info,
 
 /* These functions are analogous to the mpidbg_comm_* functions, but
    for MPI_Request. */
-
-int mpidbg_request_query(mqs_image *image, mqs_image_info *image_info,
-                         mqs_process *process, mqs_process_info *process_info,
+int mpidbg_request_query(mqs_image *image, 
+                         mqs_image_info *image_info, 
+                         mqs_process *process, 
+                         mqs_process_info *process_info,
                          mqs_taddr_t request,
-                         struct mpidbg_request_info_t **info);
-int mpidbg_request_f2c(mqs_image *image, mqs_image_info *image_info,
-                       mqs_process *process, mqs_process_info *process_info,
-                       mqs_taddr_t f77_request, mqs_taddr_t *c_request);
-int mpidbg_request_cxx2c(mqs_image *image, mqs_image_info *image_info,
-                         mqs_process *process, mqs_process_info *process_info,
-                         mqs_taddr_t cxx_request,
-                         enum mpidbg_request_info_bitmap_t request_type,
-                         mqs_taddr_t *c_request);
+                         struct mpidbg_request_handle_t **handle);
+
+/* Free a handle returned by the mpidbg_request_query() function.
+
+   Parameters:
+
+   IN: handle: handle previously returned by mpidbg_request_query()
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid and was freed successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+*/
+int mpidbg_request_handle_free(struct mpidbg_request_handle_t *handle);
 
 /*-----------------------------------------------------------------------
  * MPI handle query functions
@@ -866,17 +1206,25 @@ int mpidbg_request_cxx2c(mqs_image *image, mqs_image_info *image_info,
 
 /* These functions are analogous to the mpidbg_comm_* functions, but
    for MPI_Status. */
-
-int mpidbg_status_query(mqs_image *image, mqs_image_info *image_info,
-                        mqs_process *process, mqs_process_info *process_info,
+int mpidbg_status_query(mqs_image *image, 
+                        mqs_image_info *image_info, 
+                        mqs_process *process, 
+                        mqs_process_info *process_info,
                         mqs_taddr_t status,
-                        struct mpidbg_status_info_t **info);
-int mpidbg_status_f2c(mqs_image *image, mqs_image_info *image_info,
-                      mqs_process *process, mqs_process_info *process_info,
-                      mqs_taddr_t f77_status, mqs_taddr_t *c_status);
-int mpidbg_status_cxx2c(mqs_image *image, mqs_image_info *image_info,
-                        mqs_process *process, mqs_process_info *process_info,
-                        mqs_taddr_t cxx_status,
-                        mqs_taddr_t *c_status);
+                        struct mpidbg_status_handle_t **handle);
+
+/* Free a handle returned by the mpidbg_status_query() function.
+
+   Parameters:
+
+   IN: handle: handle previously returned by mpidbg_status_query()
+
+   This function will return:
+
+   MPIDBG_SUCCESS: if the handle is valid and was freed successfully.
+   MPIDBG_ERR_NOT_FOUND: if the handle is not valid / found.
+*/
+int mpidbg_status_handle_free(struct mpidbg_status_handle_t *handle);
+
 
 #endif /* __MPIDBG_INTERFACE_H__ */

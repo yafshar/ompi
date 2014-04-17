@@ -131,34 +131,38 @@ OMPI_DECLSPEC char *MPIR_debug_abort_string = "";
 static char *ompi_debugger_dll_path = NULL;
 
 /* Check for a file in few direct ways for portability */
-static void check(char *dir, char *file, char **locations)
+static void check(char *dir, char *file, char ***locations) 
 {
+    int i;
     char *str;
+    static char *dso_suffixes[] = { ".so", ".dylib", NULL };
 
-    asprintf(&str, "%s/%s.so", dir, file);
-
+    for (i = 0; NULL != dso_suffixes && NULL != dso_suffixes[i]; ++i) {
+        asprintf(&str, "%s/%s%s", dir, file, dso_suffixes[i]);
+    
 #if defined(HAVE_SYS_STAT_H)
-    {
-        struct stat buf;
-
-        /* Use stat() */
-        if (0 == stat(str, &buf)) {
-            opal_argv_append_nosize(&locations, file);
+        {
+            struct stat buf;
+            
+            /* Use stat() */
+            if (0 == stat(str, &buf)) {
+                opal_argv_append_nosize(locations, str);
+            }
         }
-    }
 #else
-    {
-        FILE *fp;
-
-        /* Just try to open the file */
-        if (NULL != (fp = fopen(str, "r"))) {
-            fclose(fp);
-            opal_argv_append_nosize(&locations, file);
+        {
+            FILE *fp;
+            
+            /* Just try to open the file */
+            if (NULL != (fp = fopen(str, "r"))) {
+                fclose(fp);
+                opal_argv_append_nosize(locations, str);
+            }
         }
-    }
 #endif /* defined(HAVE_SYS_STAT_H) */
 
-    free(str);
+        free(str);
+    }
 }
 
 
@@ -180,8 +184,8 @@ ompi_debugger_setup_dlls(void)
     if (NULL != ompi_debugger_dll_path) {
         dirs = opal_argv_split(ompi_debugger_dll_path, ':');
         for (i = 0; dirs[i] != NULL; ++i) {
-            check(dirs[i], OMPI_MPIHANDLES_DLL_PREFIX, tmp1);
-            check(dirs[i], OMPI_MSGQ_DLL_PREFIX, tmp2);
+            check(dirs[i], OMPI_MPIHANDLES_DLL_PREFIX, &tmp1);
+            check(dirs[i], OMPI_MSGQ_DLL_PREFIX, &tmp2);
         }
         opal_argv_free(dirs);
     }

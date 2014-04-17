@@ -18,7 +18,7 @@
 #
 
 noinst_LTLIBRARIES = libdebuggers.la libompi_debugger_canary.la
-ompilib_LTLIBRARIES = libompi_dbg_msgq.la
+ompilib_LTLIBRARIES = libompi_dbg_msgq.la libompi_dbg_mpihandles.la
 
 check_PROGRAMS = predefined_gap_test predefined_pad_test dlopen_test
 
@@ -67,9 +67,20 @@ libompi_debugger_canary_la_SOURCES = \
 common = ompi_common_dll_defs.h ompi_common_dll.c
 
 # MPI message queue DLL
-libompi_dbg_msgq_la_SOURCES = ompi_msgq_dll.c ompi_msgq_dll_defs.h $(common)
+libompi_dbg_msgq_la_SOURCES = \
+        ompi_msgq_dll.c \
+        ompi_msgq_dll_defs.h \
+        $(common)
 libompi_dbg_msgq_la_CFLAGS = -g
 libompi_dbg_msgq_la_LDFLAGS = -module -avoid-version
+
+# MPI message queue DLL
+libompi_dbg_mpihandles_la_SOURCES = \
+        ompi_mpihandles_dll.c \
+        ompi_mpihandles_dll_defs.h \
+        $(common)
+libompi_dbg_mpihandles_la_CFLAGS = -g
+libompi_dbg_mpihandles_la_LDFLAGS = -module -avoid-version
 
 # These are checks for the padding on predefined MPI object types.
 # They are here in the debuggers/ directory (vs., for example,
