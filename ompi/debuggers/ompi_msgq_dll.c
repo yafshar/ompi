@@ -1317,35 +1317,6 @@ void mqs_destroy_image_info (mqs_image_info *info)
 } /* mqs_destroy_image_info */
 
 
-/* JMS Ashley: this should be moved to ompi_mpihandles_dll.c, right? */
-int mqs_get_comm_coll_state (mqs_process *proc, int op, int *in, int *curr)
-{
-    mpi_process_info *p_info = (mpi_process_info *)mqs_get_process_info (proc);
-    mpi_process_info_extra *extra = (mpi_process_info_extra*) p_info->extra;
-    mqs_image * image        = mqs_get_image (proc);
-    mpi_image_info *i_info   = (mpi_image_info *)mqs_get_image_info (image);
-
-    mqs_taddr_t comm_ptr = extra->current_communicator->comm_ptr;
-    int out;
-    
-    
-    if ( op >= 14 )
-	    return mqs_no_information;
-    
-    *in = ompi_fetch_int( proc,
-			  comm_ptr + i_info->ompi_communicator_t.offset.c_call_counters_up + ( op * sizeof(int)),
-			  p_info );
-    
-    out = ompi_fetch_int( proc,
-			  comm_ptr + i_info->ompi_communicator_t.offset.c_call_counters_down + ( op * sizeof(int)),
-			  p_info );
-    
-    *curr = ( *in == out ? 0 : 1);
-
-    return mqs_ok;
-}
-
-
 /***********************************************************************/
 /* Convert an error code into a printable string */
 char * mqs_dll_error_string (int errcode)

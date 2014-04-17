@@ -337,10 +337,6 @@ int ompi_fill_in_type_info(mqs_image *image, char **message)
                           qh_type, ompi_communicator_t, c_topo);
         ompi_field_offset(i_info->ompi_communicator_t.offset.c_keyhash,
                           qh_type, ompi_communicator_t, c_keyhash);
-	ompi_field_offset(i_info->ompi_communicator_t.offset.c_call_counters_up,
-			  qh_type, ompi_communicator_t, c_call_counters_up);
-	ompi_field_offset(i_info->ompi_communicator_t.offset.c_call_counters_down,
-			  qh_type, ompi_communicator_t, c_call_counters_down);
     }
     {
         mqs_type* qh_type, *cart_type, *graph_type, *dist_graph_type;

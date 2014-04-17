@@ -691,9 +691,6 @@ extern int mqs_next_new_process (mqs_process *, mqs_process_location *);
 extern int mqs_set_process_identity (mqs_process *, int);
 #endif
 
-/* JMS Ashley: this should be moved to mpihandles_interface.h, right? */
-OMPI_DECLSPEC extern int mqs_get_comm_coll_state (mqs_process *, int, int *, int *);
-
 END_C_DECLS
 
 #endif /* defined (_MPI_INTERFACE_INCLUDED) */

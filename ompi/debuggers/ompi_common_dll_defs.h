@@ -203,8 +203,6 @@ typedef struct
             int c_f_to_c_index;
             int c_topo;
             int c_keyhash;
-            int c_call_counters_up;
-            int c_call_counters_down;
         } offset;
     } ompi_communicator_t;
     /* base topology information in a communicator */
