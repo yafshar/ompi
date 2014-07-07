@@ -10,7 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012-2015 Los Alamos National Security, LLC. All rights
  *                         reserved.
  * $COPYRIGHT$
@@ -184,8 +184,8 @@ ompi_debugger_setup_dlls(void)
     if (NULL != ompi_debugger_dll_path) {
         dirs = opal_argv_split(ompi_debugger_dll_path, ':');
         for (i = 0; dirs[i] != NULL; ++i) {
-            check(dirs[i], OMPI_MPIHANDLES_DLL_PREFIX, &tmp1);
-            check(dirs[i], OMPI_MSGQ_DLL_PREFIX, &tmp2);
+            check(dirs[i], OMPI_MSGQ_DLL_PREFIX, &tmp1);
+            check(dirs[i], OMPI_MPIHANDLES_DLL_PREFIX, &tmp2);
         }
         opal_argv_free(dirs);
     }
