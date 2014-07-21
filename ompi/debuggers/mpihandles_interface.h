@@ -10,7 +10,7 @@
 /*
  * Copyright (c) 2007      High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
- * Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2007-2013 The University of Tennessee and The University of
  *                         Tennessee Research Foundation.  All rights reserved.
  * Copyright (c) 2012-2013 Inria.  All rights reserved.
@@ -83,6 +83,8 @@
  * Types and macros
  **************************************************************************/
 
+/* Constants, possibly from the MPI implemnetation */
+
 enum {
     MPIDBG_MAX_OBJECT_NAME = MPI_MAX_OBJECT_NAME
 };
@@ -92,6 +94,12 @@ enum {
 enum {
     MPIDBG_INTERFACE_VERSION = 1
 };
+
+/* Make the constants available to the debugger */
+
+extern const int mpidbg_max_object_name;
+extern const int mpidbg_max_filename;
+extern const int mpidbg_interface_version;
 
 
 /*-----------------------------------------------------------------------

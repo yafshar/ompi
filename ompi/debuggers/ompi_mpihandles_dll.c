@@ -1,11 +1,10 @@
 /*
- * Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
  * Copyright (c) 2012-2013 Inria.  All rights reserved.
- * Copyright (c) 2009-2014 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -94,6 +93,13 @@ int opal_progress_spin_count;
 bool opal_mutex_check_locks;
 bool opal_uses_threads;
 #endif /* defined(__SUNPRO_C) */
+
+/* Constants to convey semantic information to the debugger about some
+   constants from the MPI implementation */
+
+const int mpidbg_max_object_name = MPIDBG_MAX_OBJECT_NAME;
+const int mpidbg_max_filename = MPIDBG_MAX_FILENAME;
+const int mpidbg_interface_version = MPIDBG_INTERFACE_VERSION;
 
 /*---------------------------------------------------------------------*/
 
