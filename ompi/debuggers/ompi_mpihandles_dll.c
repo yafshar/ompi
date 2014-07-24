@@ -845,7 +845,7 @@ int mpidbg_comm_query_topo(struct mpidbg_comm_handle_t *ch,
         /* Periods */
         *comm_cporge = mqs_malloc(size);
         if (NULL == *comm_cporge) {
-            free(*comm_cdorgi);
+            mqs_free(*comm_cdorgi);
             return MPIDBG_ERR_NO_MEM;
         }
         memcpy(*comm_cporge, handle->comm_cart_periods, size);
@@ -868,7 +868,7 @@ int mpidbg_comm_query_topo(struct mpidbg_comm_handle_t *ch,
             handle->comm_graph_index[handle->comm_graph_num_nodes - 1];
         *comm_cporge = mqs_malloc(size);
         if (NULL == *comm_cporge) {
-            free(*comm_cdorgi);
+            mqs_free(*comm_cdorgi);
             return MPIDBG_ERR_NO_MEM;
         }
         memcpy(*comm_cporge, handle->comm_graph_edges, size);
