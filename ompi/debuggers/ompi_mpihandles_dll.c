@@ -55,13 +55,13 @@ uint8_t mpidbg_dll_is_big_endian = 0;
 #endif
 uint8_t mpidbg_dll_bitness = (char) (sizeof(void*) * 8);
 enum mpidbg_comm_capabilities_t mpidbg_comm_capabilities = 0;
-struct mpidbg_name_map_t *mpidbg_comm_name_map = NULL;
+struct mpidbg_name_map_t mpidbg_comm_name_map[MPIDBG_COMM_MAX];
 enum mpidbg_errhandler_capabilities_t mpidbg_errhandler_capabilities = 0;
-struct mpidbg_name_map_t *mpidbg_errhandler_name_map = NULL;
+struct mpidbg_name_map_t mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_MAX];
 enum mpidbg_request_capabilities_t mpidbg_request_capabilities = 0;
-struct mpidbg_name_map_t *mpidbg_request_name_map = NULL;
+struct mpidbg_name_map_t mpidbg_request_name_map[MPIDBG_REQUEST_MAX];
 enum mpidbg_status_capabilities_t mpidbg_status_capabilities = 0;
-struct mpidbg_name_map_t *mpidbg_status_name_map = NULL;
+struct mpidbg_name_map_t mpidbg_status_name_map[MPIDBG_STATUS_MAX];
 
 #if defined(__SUNPRO_C)
 /*
@@ -102,19 +102,6 @@ const int mpidbg_max_filename = MPIDBG_MAX_FILENAME;
 const int mpidbg_interface_version = MPIDBG_INTERFACE_VERSION;
 
 /*---------------------------------------------------------------------*/
-
-/* Small helper function: allocate a map of a given length */
-static struct mpidbg_name_map_t *alloc_map(mqs_image *image, int len)
-{
-    mpi_image_info *i_info = (mpi_image_info *) mqs_get_image_info(image);
-    struct mpidbg_name_map_t *m = NULL;
-
-    if (NULL != i_info) {
-        m = mqs_malloc(len * sizeof(struct mpidbg_name_map_t));
-    }
-
-    return m;
-}
 
 /* Small helper function: look up a symbol, and if we find it, put it
    in a map entry */
@@ -226,8 +213,8 @@ int mpidbg_init_per_image(mqs_image *image, const mqs_image_callbacks *icb,
     /* JMS: these ompi types are just the "foo" types; but OMPI MPI
        types are all "foo*"'s -- is this right?  If this is wrong, I
        *suspect* that something like the following may be right:
-       
-       handle_types->hi_c_comm = 
+
+       handle_types->hi_c_comm =
          mqs_find_type(image, "ompi_communicator_t*", mqs_lang_c);
 
        Need to confirm this with the DDT guys...
@@ -366,57 +353,53 @@ int mpidbg_init_per_process(mqs_process *process,
        #define's for the pre-defined names, such as "#define
        MPI_COMM_WORLD &ompi_mpi_comm_world"). */
     /* Communicators */
-    mpidbg_comm_name_map = alloc_map(image, 4);
     if (NULL != mpidbg_comm_name_map) {
-        int i = 0;
         fill_map(image, "MPI_COMM_WORLD", "ompi_mpi_comm_world",
-                 &mpidbg_comm_name_map[i++]);
+                 &mpidbg_comm_name_map[MPIDBG_COMM_WORLD]);
         fill_map(image, "MPI_COMM_SELF", "ompi_mpi_comm_self",
-                 &mpidbg_comm_name_map[i++]);
+                 &mpidbg_comm_name_map[MPIDBG_COMM_SELF]);
+        fill_map(image, "MPI_COMM_SELF", "ompi_mpi_comm_parent",
+                 &mpidbg_comm_name_map[MPIDBG_COMM_PARENT]);
         fill_map(image, "MPI_COMM_NULL", "ompi_mpi_comm_null",
-                 &mpidbg_comm_name_map[i++]);
+                 &mpidbg_comm_name_map[MPIDBG_COMM_NULL]);
 
         /* Sentinel value */
-        mpidbg_comm_name_map[i].map_name = NULL;
+        mpidbg_comm_name_map[MPIDBG_COMM_MAX].map_name = NULL;
     }
 
     /* Error handlers */
-    mpidbg_errhandler_name_map = alloc_map(image, 4);
     if (NULL != mpidbg_errhandler_name_map) {
-        int i = 0;
         fill_map(image, "MPI_ERRORS_ARE_FATAL", "ompi_mpi_errors_are_fatal",
-                 &mpidbg_errhandler_name_map[i++]);
+                 &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_ARE_FATAL]);
         fill_map(image, "MPI_ERRORS_RETURN", "ompi_mpi_errors_return",
-                 &mpidbg_errhandler_name_map[i++]);
+                 &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_RETURN]);
+        fill_map(image, "MPI_ERRORS_RETURN", "MPI::ERRORS_THROW_EXCEPTIONS",
+                 &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_THROW_EXCEPTIONS]);
         fill_map(image, "MPI_ERRHANDLER_NULL", "ompi_mpi_errhandler_null",
-                 &mpidbg_errhandler_name_map[i++]);
-        /* MPI::ERRORS_THROW_EXCEPTIONS exists as a symbol in OMPI; no
-           need to alias it here */
+                 &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_NULL]);
 
         /* Sentinel value */
-        mpidbg_errhandler_name_map[i].map_name = NULL;
+        mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_MAX].map_name = NULL;
     }
 
     /* Requests */
-    mpidbg_request_name_map = alloc_map(image, 2);
     if (NULL != mpidbg_request_name_map) {
-        int i = 0;
         fill_map(image, "MPI_REQUEST_NULL", "ompi_request_null",
-                 &mpidbg_request_name_map[i++]);
+                 &mpidbg_request_name_map[MPIDBG_REQUEST_NULL]);
 
         /* Sentinel value */
-        mpidbg_request_name_map[i].map_name = NULL;
+        mpidbg_request_name_map[MPIDBG_REQUEST_MAX].map_name = NULL;
     }
 
     /* Statuses */
-    mpidbg_status_name_map = alloc_map(image, 2);
     if (NULL != mpidbg_status_name_map) {
-        int i = 0;
         fill_map(image, "MPI_STATUS_IGNORE", NULL,
-                 &mpidbg_status_name_map[i++]);
+                 &mpidbg_status_name_map[MPIDBG_STATUS_IGNORE]);
+        fill_map(image, "MPI_STATUSES_IGNORE", NULL,
+                 &mpidbg_status_name_map[MPIDBG_STATUS_IGNORES]);
 
         /* Sentinel value */
-        mpidbg_status_name_map[i].map_name = NULL;
+        mpidbg_status_name_map[MPIDBG_STATUS_MAX].map_name = NULL;
     }
 
     /* All done */
@@ -473,12 +456,12 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
                    MPIDBG_MAX_OBJECT_NAME, handle->comm_name);
 
     /* Get this process' rank in the comm */
-    handle->comm_rank = ompi_fetch_int(process, 
+    handle->comm_rank = ompi_fetch_int(process,
                                         comm + i_info->ompi_communicator_t.offset.c_my_rank,
                                         p_info);
 
     /* Analyze the flags on the comm */
-    flags = ompi_fetch_int(process, 
+    flags = ompi_fetch_int(process,
                            comm + i_info->ompi_communicator_t.offset.c_flags,
                            p_info);
     handle->comm_bitflags = 0;
@@ -508,13 +491,13 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
     }
 
     /* Look up the local group */
-    group = ompi_fetch_pointer(process, 
+    group = ompi_fetch_pointer(process,
                                comm + i_info->ompi_communicator_t.offset.c_local_group,
                                p_info);
-    handle->comm_rank = ompi_fetch_int(process, 
+    handle->comm_rank = ompi_fetch_int(process,
                                         group + i_info->ompi_group_t.offset.grp_my_rank,
                                         p_info);
-    handle->comm_num_local_procs = ompi_fetch_int(process, 
+    handle->comm_num_local_procs = ompi_fetch_int(process,
                                                    group + i_info->ompi_group_t.offset.grp_proc_count,
                                                    p_info);
 
@@ -528,10 +511,10 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
 
     /* Look up the remote group (if relevant) */
     if (0 != (flags & OMPI_COMM_INTER)) {
-        group = ompi_fetch_pointer(process, 
+        group = ompi_fetch_pointer(process,
                                    comm + i_info->ompi_communicator_t.offset.c_remote_group,
                                    p_info);
-        handle->comm_num_remote_procs = ompi_fetch_int(process, 
+        handle->comm_num_remote_procs = ompi_fetch_int(process,
                                                         group + i_info->ompi_group_t.offset.grp_proc_count,
                                                         p_info);
         handle->comm_size = handle->comm_num_remote_procs;
@@ -548,17 +531,17 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
        graph data is just slightly different from each other; it's
        [slightly] easier (and less confusing!) to have separate
        retrieval code blocks. */
-    topo = ompi_fetch_pointer(process, 
+    topo = ompi_fetch_pointer(process,
                               comm + i_info->ompi_communicator_t.offset.c_topo,
                               p_info);
-    if (0 != topo && 
+    if (0 != topo &&
         0 != (handle->comm_bitflags & MPIDBG_COMM_INFO_CARTESIAN)) {
         int i, ndims, tmp;
         mqs_taddr_t dims, periods, coords;
 
         /* Alloc space for copying arrays */
         handle->comm_cart_num_dims = ndims =
-            ompi_fetch_int(process, 
+            ompi_fetch_int(process,
                            topo + i_info->mca_topo_base_module_t.offset.mtc_cart.ndims,
                            p_info);
         handle->comm_cart_dims = mqs_malloc(ndims * sizeof(int));
@@ -580,13 +563,13 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
 
         /* Retrieve the dimension and periodic description data from
            the two arrays on the image's communicator */
-        dims = ompi_fetch_pointer(process, 
+        dims = ompi_fetch_pointer(process,
                                  topo + i_info->mca_topo_base_module_t.offset.mtc_cart.dims,
                                  p_info);
-        periods = ompi_fetch_pointer(process, 
+        periods = ompi_fetch_pointer(process,
                                  topo + i_info->mca_topo_base_module_t.offset.mtc_cart.periods,
                                  p_info);
-        coords = ompi_fetch_pointer(process, 
+        coords = ompi_fetch_pointer(process,
                                  topo + i_info->mca_topo_base_module_t.offset.mtc_cart.coords,
                                  p_info);
 
@@ -603,8 +586,8 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
         mqs_taddr_t index, edges;
 
         /* Alloc space for copying the indexes */
-        handle->comm_graph_num_nodes = nnodes = 
-            ompi_fetch_int(process, 
+        handle->comm_graph_num_nodes = nnodes =
+            ompi_fetch_int(process,
                            topo + i_info->mca_topo_base_module_t.offset.mtc_graph.nnodes,
                            p_info);
         handle->comm_graph_index = mqs_malloc(nnodes * sizeof(int));
@@ -614,11 +597,11 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
         }
 
         /* Retrieve the index data */
-        index = ompi_fetch_pointer(process, 
+        index = ompi_fetch_pointer(process,
                                  topo + i_info->mca_topo_base_module_t.offset.mtc_graph.index,
                                  p_info);
         for (i = 0; i < nnodes; ++i) {
-            handle->comm_graph_index[i] = 
+            handle->comm_graph_index[i] =
                 ompi_fetch_int(process, index + (sizeof(int) * i), p_info);
         }
 
@@ -630,13 +613,13 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
         }
 
         /* Retrieve the edge data */
-        edges = ompi_fetch_pointer(process, 
+        edges = ompi_fetch_pointer(process,
                                  topo + i_info->mca_topo_base_module_t.offset.mtc_graph.edges,
                                  p_info);
-        for (i = 0; 
-             i < handle->comm_graph_index[handle->comm_graph_num_nodes - 1]; 
+        for (i = 0;
+             i < handle->comm_graph_index[handle->comm_graph_num_nodes - 1];
              ++i) {
-            handle->comm_graph_edges[i] = 
+            handle->comm_graph_edges[i] =
                 ompi_fetch_int(process, edges + (sizeof(int) * i), p_info);
         }
     } else if (0 != topo &&
@@ -645,8 +628,8 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
     }
 
     /* Fortran handle */
-    handle->comm_fortran_handle = 
-        ompi_fetch_int(process, 
+    handle->comm_fortran_handle =
+        ompi_fetch_int(process,
                        comm + i_info->ompi_communicator_t.offset.c_f_to_c_index,
                        p_info);
     printf("mpdbg: comm fortran handle: %d\n", handle->comm_fortran_handle);
@@ -655,7 +638,7 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
     handle->comm_cxx_handle = MPIDBG_ERR_NOT_SUPPORTED;
 
     /* Fill in attributes */
-    keyhash = ompi_fetch_pointer(process, 
+    keyhash = ompi_fetch_pointer(process,
                                  comm + i_info->ompi_communicator_t.offset.c_keyhash,
                                  p_info);
     fill_attributes(&(handle->comm_num_attrs), &(handle->comm_attrs),
@@ -697,10 +680,10 @@ int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
 int mpidbg_comm_handle_free(struct mpidbg_comm_handle_t *ch)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_comm_handle_t *handle = 
+    struct ompi_mpidbg_comm_handle_t *handle =
         (struct ompi_mpidbg_comm_handle_t*) ch;
 
-    if (NULL == ch || 
+    if (NULL == ch ||
         OMPI_DBG_COMM_MAGIC_NUMBER != handle->comm_magic_number) {
         return MPIDBG_ERR_NOT_FOUND;
     }
@@ -721,13 +704,13 @@ int mpidbg_comm_handle_free(struct mpidbg_comm_handle_t *ch)
             mqs_free(handle->comm_graph_edges);
         }
     }
-    
+
     /* Free attributes */
     /* JMS fill me in */
-    
+
     /* Zero it all out, just to be sure */
     memset((void*) handle, 0, sizeof(*handle));
-    
+
     /* Free the struct itself; done */
     mqs_free(handle);
 
@@ -747,7 +730,7 @@ int mpidbg_comm_query_basic(struct mpidbg_comm_handle_t *ch,
                             struct mpidbg_keyvalue_pair_t ***comm_extra_info)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_comm_handle_t *handle = 
+    struct ompi_mpidbg_comm_handle_t *handle =
         (struct ompi_mpidbg_comm_handle_t*) ch;
 
     if (NULL == ch ||
@@ -779,7 +762,7 @@ int mpidbg_comm_query_procs(struct mpidbg_comm_handle_t *ch,
                             struct mpidbg_process_t **comm_remote_procs)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_comm_handle_t *handle = 
+    struct ompi_mpidbg_comm_handle_t *handle =
         (struct ompi_mpidbg_comm_handle_t*) ch;
 
     if (NULL == ch ||
@@ -820,7 +803,7 @@ int mpidbg_comm_query_topo(struct mpidbg_comm_handle_t *ch,
                            int **comm_cporge)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_comm_handle_t *handle = 
+    struct ompi_mpidbg_comm_handle_t *handle =
         (struct ompi_mpidbg_comm_handle_t*) ch;
 
     if (NULL == ch ||
@@ -849,7 +832,7 @@ int mpidbg_comm_query_topo(struct mpidbg_comm_handle_t *ch,
             return MPIDBG_ERR_NO_MEM;
         }
         memcpy(*comm_cporge, handle->comm_cart_periods, size);
-    } 
+    }
 
     /* Graph communicators */
     else if (0 != (handle->comm_bitflags & MPIDBG_COMM_INFO_GRAPH)) {
@@ -890,7 +873,7 @@ int mpidbg_comm_query_attrs(struct mpidbg_comm_handle_t *ch,
                             struct mpidbg_attribute_pair_t *comm_attrs)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_comm_handle_t *handle = 
+    struct ompi_mpidbg_comm_handle_t *handle =
         (struct ompi_mpidbg_comm_handle_t*) ch;
 
     if (NULL == ch ||
@@ -910,7 +893,7 @@ int mpidbg_comm_query_requests(struct mpidbg_comm_handle_t *ch,
                                mqs_taddr_t **comm_pending_requests)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_comm_handle_t *handle = 
+    struct ompi_mpidbg_comm_handle_t *handle =
         (struct ompi_mpidbg_comm_handle_t*) ch;
 
     if (NULL == ch ||
@@ -932,7 +915,7 @@ int mpidbg_comm_query_derived(struct mpidbg_comm_handle_t *ch,
                               mqs_taddr_t **comm_derived_windows)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_comm_handle_t *handle = 
+    struct ompi_mpidbg_comm_handle_t *handle =
         (struct ompi_mpidbg_comm_handle_t*) ch;
 
     if (NULL == ch ||
@@ -946,11 +929,11 @@ int mpidbg_comm_query_derived(struct mpidbg_comm_handle_t *ch,
 
 /*---------------------------------------------------------------------*/
 
-int mpidbg_errhandler_query(mqs_image *image, 
-                            mqs_image_info *image_info, 
-                            mqs_process *process, 
+int mpidbg_errhandler_query(mqs_image *image,
+                            mqs_image_info *image_info,
+                            mqs_process *process,
                             mqs_process_info *process_info,
-                            mqs_taddr_t c_errhandler, 
+                            mqs_taddr_t c_errhandler,
                             struct mpidbg_errhandler_handle_t **handle)
 {
     printf("mpidbg_errhandler_query: %p\n", (void*) c_errhandler);
@@ -964,10 +947,10 @@ int mpidbg_errhandler_query(mqs_image *image,
 int mpidbg_errhandler_handle_free(struct mpidbg_errhandler_handle_t *eh)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_errhandler_handle_t *handle = 
+    struct ompi_mpidbg_errhandler_handle_t *handle =
         (struct ompi_mpidbg_errhandler_handle_t*) eh;
 
-    if (NULL == eh || 
+    if (NULL == eh ||
         OMPI_DBG_ERRHANDLER_MAGIC_NUMBER != handle->eh_magic_number) {
         return MPIDBG_ERR_NOT_FOUND;
     }
@@ -978,7 +961,7 @@ int mpidbg_errhandler_handle_free(struct mpidbg_errhandler_handle_t *eh)
 
     /* Zero it all out, just to be sure */
     memset((void*) handle, 0, sizeof(*handle));
-    
+
     /* Free the struct itself; done */
     mqs_free(handle);
 
@@ -987,11 +970,11 @@ int mpidbg_errhandler_handle_free(struct mpidbg_errhandler_handle_t *eh)
 
 /*---------------------------------------------------------------------*/
 
-int mpidbg_request_query(mqs_image *image, 
-                         mqs_image_info *image_info, 
-                         mqs_process *process, 
+int mpidbg_request_query(mqs_image *image,
+                         mqs_image_info *image_info,
+                         mqs_process *process,
                          mqs_process_info *process_info,
-                         mqs_taddr_t c_request, 
+                         mqs_taddr_t c_request,
                          struct mpidbg_request_handle_t **handle)
 {
     printf("mpidbg_request_query: %p\n", (void*) c_request);
@@ -1005,17 +988,17 @@ int mpidbg_request_query(mqs_image *image,
 int mpidbg_request_handle_free(struct mpidbg_request_handle_t *rh)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_request_handle_t *handle = 
+    struct ompi_mpidbg_request_handle_t *handle =
         (struct ompi_mpidbg_request_handle_t*) rh;
 
-    if (NULL == rh || 
+    if (NULL == rh ||
         OMPI_DBG_REQUEST_MAGIC_NUMBER != handle->req_magic_number) {
         return MPIDBG_ERR_NOT_FOUND;
     }
 
     /* Zero it all out, just to be sure */
     memset((void*) handle, 0, sizeof(*handle));
-    
+
     /* Free the struct itself; done */
     mqs_free(handle);
 
@@ -1024,11 +1007,11 @@ int mpidbg_request_handle_free(struct mpidbg_request_handle_t *rh)
 
 /*---------------------------------------------------------------------*/
 
-int mpidbg_status_query(mqs_image *image, 
-                        mqs_image_info *image_info, 
-                        mqs_process *process, 
+int mpidbg_status_query(mqs_image *image,
+                        mqs_image_info *image_info,
+                        mqs_process *process,
                         mqs_process_info *process_info,
-                        mqs_taddr_t c_status, 
+                        mqs_taddr_t c_status,
                         struct mpidbg_status_handle_t **handle)
 {
     printf("mpidbg_status_query: %p\n", (void*) c_status);
@@ -1042,17 +1025,17 @@ int mpidbg_status_query(mqs_image *image,
 int mpidbg_status_handle_free(struct mpidbg_status_handle_t *sh)
 {
     /* Upcast to our augmented handle type */
-    struct ompi_mpidbg_status_handle_t *handle = 
+    struct ompi_mpidbg_status_handle_t *handle =
         (struct ompi_mpidbg_status_handle_t*) sh;
 
-    if (NULL == sh || 
+    if (NULL == sh ||
         OMPI_DBG_STATUS_MAGIC_NUMBER != handle->status_magic_number) {
         return MPIDBG_ERR_NOT_FOUND;
     }
 
     /* Zero it all out, just to be sure */
     memset((void*) handle, 0, sizeof(*handle));
-    
+
     /* Free the struct itself; done */
     mqs_free(handle);
 

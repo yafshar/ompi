@@ -25,30 +25,30 @@
  * Copyright (C) 1997-1998 Dolphin Interconnect Solutions Inc.
  *
  * $HEADER$
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
- * 
+ *
  * - Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
- * 
+ *
  * - Redistributions in binary form must reproduce the above copyright
  *   notice, this list of conditions and the following disclaimer listed
  *   in this license in the documentation and/or other materials
  *   provided with the distribution.
- * 
+ *
  * - Neither the name of the copyright holders nor the names of its
  *   contributors may be used to endorse or promote products derived from
  *   this software without specific prior written permission.
- * 
+ *
  * The copyright holders provide no reassurances that the source code
  * provided does not infringe any patent, copyright, or any other
  * intellectual property rights of third parties.  The copyright holders
  * disclaim any liability to any recipient for claims brought against
  * recipient by any third party for infringement of that parties
  * intellectual property rights.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -236,7 +236,7 @@ struct mpidbg_name_map_t {
 /* MPI attribute / value pairs.  Include both a numeric and string
    key; pre-defined MPI keyvals (e.g., MPI_TAG_MAX) have a
    human-readable string name.  The string will be NULL for
-   non-predefined keyvals. 
+   non-predefined keyvals.
 
    The int keyval member is last to avoid "holes" in the memory
    layout. */
@@ -348,7 +348,7 @@ enum mpidbg_predefined_comm_t {
 
 /* When a communicator is looked up in an MPI process, the following
    handle is returned.  This handle can be used as a "base class" by
-   the DLL to cache additional information, if desired.  
+   the DLL to cache additional information, if desired.
 
    This handle is a distinct type (rather than, for example, a typedef
    to (void*)) to provide compile-time checking, ensuring that handles
@@ -370,6 +370,14 @@ struct mpidbg_comm_handle_t {
 /*-----------------------------------------------------------------------
  * Requests
  *-----------------------------------------------------------------------*/
+
+/* Predefined handle -> address mappings.  This enum is the index to
+   an array indicating the handle addresses of the pre-defined
+   requests.  */
+enum mpidbg_predefined_request_t {
+    MPIDBG_REQUEST_NULL,
+    MPIDBG_REQUEST_MAX
+};
 
 /* Using an enum instead of #define because debuggers can show the
    *names* of enum values, not just the values. */
@@ -406,6 +414,15 @@ struct mpidbg_request_handle_t {
 /*-----------------------------------------------------------------------
  * Statuses
  *-----------------------------------------------------------------------*/
+
+/* Predefined handle -> address mappings.  This enum is the index to
+   an array indicating the handle addresses of the pre-defined
+   statuses.  */
+enum mpidbg_predefined_status_t {
+    MPIDBG_STATUS_IGNORE,
+    MPIDBG_STATUS_IGNORES,
+    MPIDBG_STATUS_MAX
+};
 
 enum mpidbg_status_capabilities_t {
     /* Whether this MPI DLL supports returning basic information about
@@ -553,7 +570,7 @@ extern enum mpidbg_comm_capabilities_t mpidbg_comm_capabilities;
    variable or have a single entry that has a NULL string value.  This
    variable is not valid until after a successfull call to
    mpidbg_init_per_process().  */
-extern mqs_taddr_t mpidbg_predefined_comm_map[MPIDBG_COMM_MAX];
+extern struct mpidbg_name_map_t mpidbg_comm_name_map[MPIDBG_COMM_MAX];
 
 /* Global variable *in the DLL* describing the DLL's capabilties with
    regards to error handlers.  This value is valid after a successfull
@@ -563,7 +580,18 @@ extern enum mpidbg_errhandler_capabilities_t mpidbg_errhandler_capabilities;
 /* Global variable *in the DLL* that is an array of MPI error handler
    handle names -> handle mappings.  It is analogous to
    mpidbg_predefined_comm_map; see above for details. */
-extern mqs_taddr_t mpidbg_predefined_errhandler_map[MPIDBG_ERRHANDLER_MAX];
+extern struct mpidbg_name_map_t mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_MAX];
+
+/* Global variable *in the DLL* that is an array of MPI request handle
+   names -> handle mappings.  It is analogous to
+   mpidbg_predefined_comm_map; see above for details. */
+extern struct mpidbg_name_map_t mpidbg_request_name_map[MPIDBG_REQUEST_MAX];
+
+/* Global variable *in the DLL* that is an array of MPI status
+   handle names -> handle mappings.  It is analogous to
+   mpidbg_predefined_comm_map; see above for details. */
+extern struct mpidbg_name_map_t mpidbg_status_name_map[MPIDBG_STATUS_MAX];
+
 
 /**************************************************************************
  * Functions
@@ -624,7 +652,7 @@ OMPI_DECLSPEC  int mpidbg_interface_version_compatibility(void);
    This function will return:
 
    A null-terminated string describing this DLL.
-*/   
+*/
 OMPI_DECLSPEC char *mpidbg_version_string(void);
 
 /*-----------------------------------------------------------------------*/
@@ -696,7 +724,7 @@ OMPI_DECLSPEC int mpidbg_init_per_image(mqs_image *image,
    IN: image: the application image.
    IN: image_info: the info associated with the application image.
 */
-OMPI_DECLSPEC void mpidbg_finalize_per_image(mqs_image *image, 
+OMPI_DECLSPEC void mpidbg_finalize_per_image(mqs_image *image,
                                              mqs_image_info *image_info);
 
 /*-----------------------------------------------------------------------*/
@@ -743,7 +771,7 @@ OMPI_DECLSPEC void mpidbg_finalize_per_image(mqs_image *image,
                    mpidbg_finalize_per_process()).
    MPIDBG_ERR_*: if something went wrong.
 */
-OMPI_DECLSPEC  int mpidbg_init_per_process(mqs_process *process, 
+OMPI_DECLSPEC  int mpidbg_init_per_process(mqs_process *process,
                             const mqs_process_callbacks *callbacks,
                             struct mpidbg_handle_info_t *handle_types);
 
@@ -813,11 +841,11 @@ OMPI_DECLSPEC  void mpidbg_finalize_per_process(mqs_process *process,
    MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
 */
 
-OMPI_DECLSPEC int mpidbg_comm_query(mqs_image *image, 
-                      mqs_image_info *image_info, 
-                      mqs_process *process, 
+OMPI_DECLSPEC int mpidbg_comm_query(mqs_image *image,
+                      mqs_image_info *image_info,
+                      mqs_process *process,
                       mqs_process_info *process_info,
-                      mqs_taddr_t comm, 
+                      mqs_taddr_t comm,
                       struct mpidbg_comm_handle_t **handle);
 
 /* Free a handle returned by the mpidbg_comm_query() function.
@@ -894,7 +922,7 @@ OMPI_DECLSPEC extern int mpidbg_comm_query_basic(
         comm_local_procs OUT array.
    OUT: comm_local_procs: filled with a pointer to an array of
         mpidbg_process_t instances describing the local processes in
-        this communicator.  
+        this communicator.
    OUT: comm_num_remote_procs: filled with the length of the
         comm_remote_procs OUT array.  Will be 0 if the communicator is
         not an intercommunicator.
@@ -929,12 +957,12 @@ int mpidbg_comm_query_procs(struct mpidbg_comm_handle_t *handle,
    Parameters:
 
    IN: comm_handle: handle returned by mpidbg_comm_query()
-   OUT: comm_out_length: 
+   OUT: comm_out_length:
         - For cartesian communicators, filled with the number of
           dimensions.
         - For graph communicators, filled with the number of nodes.
         - For all other communicators, filled with 0.
-   OUT: comm_cart_dims_or_graph_indexes: 
+   OUT: comm_cart_dims_or_graph_indexes:
         - For cartesian communicators, filled with a pointer to an
           array of length *comm_out_length representing the dimenstion
           lengths.
@@ -1054,9 +1082,9 @@ int mpidbg_comm_query_derived(struct mpidbg_comm_handle_t *handle,
 
 /* These functions are analogous to the mpidbg_comm_* functions, but
    for MPI_Errhandler. */
-int mpidbg_errhandler_query(mqs_image *image, 
-                            mqs_image_info *image_info, 
-                            mqs_process *process, 
+int mpidbg_errhandler_query(mqs_image *image,
+                            mqs_image_info *image_info,
+                            mqs_process *process,
                             mqs_process_info *process_info,
                             mqs_taddr_t errhandler,
                             struct mpidbg_errhandler_handle_t **handle);
@@ -1187,9 +1215,9 @@ int mpidbg_errhandler_query_callback(struct mpidbg_errhandler_handle_t *handle,
 
 /* These functions are analogous to the mpidbg_comm_* functions, but
    for MPI_Request. */
-int mpidbg_request_query(mqs_image *image, 
-                         mqs_image_info *image_info, 
-                         mqs_process *process, 
+int mpidbg_request_query(mqs_image *image,
+                         mqs_image_info *image_info,
+                         mqs_process *process,
                          mqs_process_info *process_info,
                          mqs_taddr_t request,
                          struct mpidbg_request_handle_t **handle);
@@ -1214,9 +1242,9 @@ int mpidbg_request_handle_free(struct mpidbg_request_handle_t *handle);
 
 /* These functions are analogous to the mpidbg_comm_* functions, but
    for MPI_Status. */
-int mpidbg_status_query(mqs_image *image, 
-                        mqs_image_info *image_info, 
-                        mqs_process *process, 
+int mpidbg_status_query(mqs_image *image,
+                        mqs_image_info *image_info,
+                        mqs_process *process,
                         mqs_process_info *process_info,
                         mqs_taddr_t status,
                         struct mpidbg_status_handle_t **handle);
