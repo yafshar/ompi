@@ -55,13 +55,13 @@ uint8_t mpidbg_dll_is_big_endian = 0;
 #endif
 uint8_t mpidbg_dll_bitness = (char) (sizeof(void*) * 8);
 enum mpidbg_comm_capabilities_t mpidbg_comm_capabilities = 0;
-struct mpidbg_name_map_t mpidbg_comm_name_map[MPIDBG_COMM_MAX];
+struct mpidbg_name_map_t mpidbg_comm_name_map[MPIDBG_COMM_MAX + 1];
 enum mpidbg_errhandler_capabilities_t mpidbg_errhandler_capabilities = 0;
-struct mpidbg_name_map_t mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_MAX];
+struct mpidbg_name_map_t mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_MAX + 1];
 enum mpidbg_request_capabilities_t mpidbg_request_capabilities = 0;
-struct mpidbg_name_map_t mpidbg_request_name_map[MPIDBG_REQUEST_MAX];
+struct mpidbg_name_map_t mpidbg_request_name_map[MPIDBG_REQUEST_MAX + 1];
 enum mpidbg_status_capabilities_t mpidbg_status_capabilities = 0;
-struct mpidbg_name_map_t mpidbg_status_name_map[MPIDBG_STATUS_MAX];
+struct mpidbg_name_map_t mpidbg_status_name_map[MPIDBG_STATUS_MAX + 1];
 
 #if defined(__SUNPRO_C)
 /*
