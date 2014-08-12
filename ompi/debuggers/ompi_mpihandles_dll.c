@@ -373,7 +373,7 @@ int mpidbg_init_per_process(mqs_process *process,
                  &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_ARE_FATAL]);
         fill_map(image, "MPI_ERRORS_RETURN", "ompi_mpi_errors_return",
                  &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_RETURN]);
-        fill_map(image, "MPI_ERRORS_RETURN", "MPI::ERRORS_THROW_EXCEPTIONS",
+        fill_map(image, "MPI_ERRORS_RETURN", "ompi_mpi_errors_throw_exceptions",
                  &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_THROW_EXCEPTIONS]);
         fill_map(image, "MPI_ERRHANDLER_NULL", "ompi_mpi_errhandler_null",
                  &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_NULL]);
