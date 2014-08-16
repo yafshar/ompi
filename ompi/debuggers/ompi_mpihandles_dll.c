@@ -358,7 +358,7 @@ int mpidbg_init_per_process(mqs_process *process,
                  &mpidbg_comm_name_map[MPIDBG_COMM_WORLD]);
         fill_map(image, "MPI_COMM_SELF", "ompi_mpi_comm_self",
                  &mpidbg_comm_name_map[MPIDBG_COMM_SELF]);
-        fill_map(image, "MPI_COMM_SELF", "ompi_mpi_comm_parent",
+        fill_map(image, "MPI_COMM_PARENT", "ompi_mpi_comm_parent",
                  &mpidbg_comm_name_map[MPIDBG_COMM_PARENT]);
         fill_map(image, "MPI_COMM_NULL", "ompi_mpi_comm_null",
                  &mpidbg_comm_name_map[MPIDBG_COMM_NULL]);
@@ -373,7 +373,7 @@ int mpidbg_init_per_process(mqs_process *process,
                  &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_ARE_FATAL]);
         fill_map(image, "MPI_ERRORS_RETURN", "ompi_mpi_errors_return",
                  &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_RETURN]);
-        fill_map(image, "MPI_ERRORS_RETURN", "ompi_mpi_errors_throw_exceptions",
+        fill_map(image, "MPI_ERRORS_THROW_EXCEPTIONS", "ompi_mpi_errors_throw_exceptions",
                  &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_THROW_EXCEPTIONS]);
         fill_map(image, "MPI_ERRHANDLER_NULL", "ompi_mpi_errhandler_null",
                  &mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_NULL]);
