@@ -777,8 +777,15 @@ int mpidbg_comm_query_procs(struct mpidbg_comm_handle_t *ch,
     if (NULL == *comm_local_procs) {
         return MPIDBG_ERR_NO_MEM;
     }
-    memcpy(*comm_local_procs, handle->comm_local_procs,
-           sizeof(struct mpidbg_process_t) * *comm_num_local_procs);
+    /* JMS This is likely NULL for now */
+    if (NULL != handle->comm_local_procs) {
+        memcpy(*comm_local_procs, handle->comm_local_procs,
+               sizeof(struct mpidbg_process_t) * *comm_num_local_procs);
+    } else {
+        fprintf(stderr, "mpidbg_comm_query_procs: WARNING: comm_local_procs still to be implemented\n");
+        memset(*comm_local_procs, 0,
+               sizeof(struct mpidbg_process_t) * *comm_num_local_procs);
+    }
 
     /* If there are remote procs, alloc and copy them, too */
     *comm_num_remote_procs = handle->comm_num_remote_procs;
