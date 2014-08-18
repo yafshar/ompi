@@ -570,7 +570,7 @@ extern enum mpidbg_comm_capabilities_t mpidbg_comm_capabilities;
    variable or have a single entry that has a NULL string value.  This
    variable is not valid until after a successfull call to
    mpidbg_init_per_process().  */
-extern struct mpidbg_name_map_t mpidbg_comm_name_map[MPIDBG_COMM_MAX];
+extern struct mpidbg_name_map_t mpidbg_comm_name_map[MPIDBG_COMM_MAX + 1];
 
 /* Global variable *in the DLL* describing the DLL's capabilties with
    regards to error handlers.  This value is valid after a successfull
@@ -580,17 +580,17 @@ extern enum mpidbg_errhandler_capabilities_t mpidbg_errhandler_capabilities;
 /* Global variable *in the DLL* that is an array of MPI error handler
    handle names -> handle mappings.  It is analogous to
    mpidbg_predefined_comm_map; see above for details. */
-extern struct mpidbg_name_map_t mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_MAX];
+extern struct mpidbg_name_map_t mpidbg_errhandler_name_map[MPIDBG_ERRHANDLER_MAX + 1];
 
 /* Global variable *in the DLL* that is an array of MPI request handle
    names -> handle mappings.  It is analogous to
    mpidbg_predefined_comm_map; see above for details. */
-extern struct mpidbg_name_map_t mpidbg_request_name_map[MPIDBG_REQUEST_MAX];
+extern struct mpidbg_name_map_t mpidbg_request_name_map[MPIDBG_REQUEST_MAX + 1];
 
 /* Global variable *in the DLL* that is an array of MPI status
    handle names -> handle mappings.  It is analogous to
    mpidbg_predefined_comm_map; see above for details. */
-extern struct mpidbg_name_map_t mpidbg_status_name_map[MPIDBG_STATUS_MAX];
+extern struct mpidbg_name_map_t mpidbg_status_name_map[MPIDBG_STATUS_MAX + 1];
 
 
 /**************************************************************************
