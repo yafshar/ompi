@@ -422,18 +422,38 @@ void mpidbg_finalize_per_process(mqs_process *process, mqs_process_info *info)
 
 /*---------------------------------------------------------------------*/
 
-int mpidbg_comm_query(mqs_image *image, mqs_image_info *image_info,
-                      mqs_process *process, mqs_process_info *process_info,
-                      mqs_taddr_t comm, struct mpidbg_comm_handle_t **ch)
+int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
+		      struct mpidbg_comm_handle_t **ch)
 {
     int flags, err;
-    mpi_image_info *i_info = (mpi_image_info*) image_info;
-    mpi_process_info *p_info = (mpi_process_info*) process_info;
     mqs_taddr_t group, topo, keyhash;
     struct ompi_mpidbg_comm_handle_t *handle;
 
     /* Set it to NULL until we have a full answer to return */
     (*ch) = NULL;
+
+    /* Fetch process_info */
+    mqs_process_info *process_info = mqs_get_process_info(process);
+    if (0 == process_info) {
+      return MPIDBG_ERR_NOT_FOUND;
+    }
+    mpi_process_info *p_info = (mpi_process_info *) (process_info);
+
+    /* Fetch image (macro depends on p_info!) */
+    mqs_image *image = mqs_get_image(process);
+
+    if (0 == image) {
+      return MPIDBG_ERR_NOT_FOUND;
+    }
+
+    /* Fetch image_info */
+    mqs_image_info *image_info = mqs_get_image_info(image);
+
+    if (0 == image_info) {
+      return MPIDBG_ERR_NOT_FOUND;
+    }
+
+    mpi_image_info *i_info = (mpi_image_info *) (image_info);
 
     /* Allocate an OMPI comm debugger handle */
     handle = mqs_malloc(sizeof(*handle));
@@ -936,10 +956,7 @@ int mpidbg_comm_query_derived(struct mpidbg_comm_handle_t *ch,
 
 /*---------------------------------------------------------------------*/
 
-int mpidbg_errhandler_query(mqs_image *image,
-                            mqs_image_info *image_info,
-                            mqs_process *process,
-                            mqs_process_info *process_info,
+int mpidbg_errhandler_query(mqs_process *process,
                             mqs_taddr_t c_errhandler,
                             struct mpidbg_errhandler_handle_t **handle)
 {
@@ -977,10 +994,7 @@ int mpidbg_errhandler_handle_free(struct mpidbg_errhandler_handle_t *eh)
 
 /*---------------------------------------------------------------------*/
 
-int mpidbg_request_query(mqs_image *image,
-                         mqs_image_info *image_info,
-                         mqs_process *process,
-                         mqs_process_info *process_info,
+int mpidbg_request_query(mqs_process *process,
                          mqs_taddr_t c_request,
                          struct mpidbg_request_handle_t **handle)
 {
@@ -1014,10 +1028,7 @@ int mpidbg_request_handle_free(struct mpidbg_request_handle_t *rh)
 
 /*---------------------------------------------------------------------*/
 
-int mpidbg_status_query(mqs_image *image,
-                        mqs_image_info *image_info,
-                        mqs_process *process,
-                        mqs_process_info *process_info,
+int mpidbg_status_query(mqs_process *process,
                         mqs_taddr_t c_status,
                         struct mpidbg_status_handle_t **handle)
 {

@@ -805,11 +805,11 @@ OMPI_DECLSPEC  void mpidbg_finalize_per_process(mqs_process *process,
    handle.
 
    The intent behind this design (query the communicator once and
-   return a handle for subsequent queries) is to allow a DDL to scan
+   return a handle for subsequent queries) is to allow a DLL to scan
    the MPI process *once* for all the relevant information about the
    communicator and cache it locally (presumably on the returned
    handle).  The subsequent queries are then all local, not involving
-   the probing the MPI process -- which chould be somewhat cheaper /
+   the probing the MPI process -- which could be somewhat cheaper /
    faster / easier to implement.
 
    Of course, a DLL is free to cache only the communicator value in
@@ -825,10 +825,7 @@ OMPI_DECLSPEC  void mpidbg_finalize_per_process(mqs_process *process,
 
    Parameters:
 
-   IN: image: image
-   IN: image_info: image info that was previously "put"
    IN: process: process
-   IN: process_info: process info that was previously "put"
    IN: comm: communicator handle
    OUT: comm_handle: handle to be passed to the query functions (below)
 
@@ -841,10 +838,7 @@ OMPI_DECLSPEC  void mpidbg_finalize_per_process(mqs_process *process,
    MPIDBG_ERR_NOT_SUPPORTED: if this function is unsupported.
 */
 
-OMPI_DECLSPEC int mpidbg_comm_query(mqs_image *image,
-                      mqs_image_info *image_info,
-                      mqs_process *process,
-                      mqs_process_info *process_info,
+OMPI_DECLSPEC int mpidbg_comm_query(mqs_process *process,
                       mqs_taddr_t comm,
                       struct mpidbg_comm_handle_t **handle);
 
@@ -1082,10 +1076,7 @@ int mpidbg_comm_query_derived(struct mpidbg_comm_handle_t *handle,
 
 /* These functions are analogous to the mpidbg_comm_* functions, but
    for MPI_Errhandler. */
-int mpidbg_errhandler_query(mqs_image *image,
-                            mqs_image_info *image_info,
-                            mqs_process *process,
-                            mqs_process_info *process_info,
+int mpidbg_errhandler_query(mqs_process *process,
                             mqs_taddr_t errhandler,
                             struct mpidbg_errhandler_handle_t **handle);
 
@@ -1215,10 +1206,7 @@ int mpidbg_errhandler_query_callback(struct mpidbg_errhandler_handle_t *handle,
 
 /* These functions are analogous to the mpidbg_comm_* functions, but
    for MPI_Request. */
-int mpidbg_request_query(mqs_image *image,
-                         mqs_image_info *image_info,
-                         mqs_process *process,
-                         mqs_process_info *process_info,
+int mpidbg_request_query(mqs_process *process,
                          mqs_taddr_t request,
                          struct mpidbg_request_handle_t **handle);
 
@@ -1242,10 +1230,7 @@ int mpidbg_request_handle_free(struct mpidbg_request_handle_t *handle);
 
 /* These functions are analogous to the mpidbg_comm_* functions, but
    for MPI_Status. */
-int mpidbg_status_query(mqs_image *image,
-                        mqs_image_info *image_info,
-                        mqs_process *process,
-                        mqs_process_info *process_info,
+int mpidbg_status_query(mqs_process *process,
                         mqs_taddr_t status,
                         struct mpidbg_status_handle_t **handle);
 
