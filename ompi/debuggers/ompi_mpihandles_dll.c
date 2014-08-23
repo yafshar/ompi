@@ -423,7 +423,7 @@ void mpidbg_finalize_per_process(mqs_process *process, mqs_process_info *info)
 /*---------------------------------------------------------------------*/
 
 int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
-		      struct mpidbg_comm_handle_t **ch)
+                      struct mpidbg_comm_handle_t **ch)
 {
     int flags, err;
     mqs_taddr_t group, topo, keyhash;
@@ -434,26 +434,23 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
 
     /* Fetch process_info */
     mqs_process_info *process_info = mqs_get_process_info(process);
-    if (0 == process_info) {
-      return MPIDBG_ERR_NOT_FOUND;
+    if (NULL == process_info) {
+        return MPIDBG_ERR_NOT_FOUND;
     }
-    mpi_process_info *p_info = (mpi_process_info *) (process_info);
+    mpi_process_info *p_info = (mpi_process_info *) process_info;
 
     /* Fetch image (macro depends on p_info!) */
     mqs_image *image = mqs_get_image(process);
-
-    if (0 == image) {
-      return MPIDBG_ERR_NOT_FOUND;
+    if (NULL == image) {
+        return MPIDBG_ERR_NOT_FOUND;
     }
 
     /* Fetch image_info */
     mqs_image_info *image_info = mqs_get_image_info(image);
-
     if (0 == image_info) {
-      return MPIDBG_ERR_NOT_FOUND;
+        return MPIDBG_ERR_NOT_FOUND;
     }
-
-    mpi_image_info *i_info = (mpi_image_info *) (image_info);
+    mpi_image_info *i_info = (mpi_image_info *) image_info;
 
     /* Allocate an OMPI comm debugger handle */
     handle = mqs_malloc(sizeof(*handle));
