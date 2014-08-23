@@ -196,6 +196,8 @@ enum mpidbg_return_codes_t {
     MPIDBG_ERR_UNAVAILABLE,
     /* Ran out of memory */
     MPIDBG_ERR_NO_MEM,
+    /* Handle was previously valid, but is now stale */
+    MPIDBG_ERR_STALE,
     /* Sentinel max value */
     MPIDBG_MAX_RETURN_CODE
 };
