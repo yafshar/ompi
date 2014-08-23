@@ -136,7 +136,7 @@ static int fill_attributes(int *num_attrs,
                            mqs_taddr_t table)
 {
     /* JMS fill me in */
-    return mqs_ok;
+    return MPIDBG_SUCCESS;
 }
 
 /*---------------------------------------------------------------------*/
@@ -201,7 +201,7 @@ int mpidbg_init_per_image(mqs_image *image, const mqs_image_callbacks *icb,
     mqs_put_image_info(image, (mqs_image_info *)i_info);
 
     /* Fill in the OMPI type information */
-    if (mqs_ok != ompi_fill_in_type_info(image, &message)) {
+    if (MPIDBG_SUCCESS != ompi_fill_in_type_info(image, &message)) {
         return MPIDBG_ERR_NOT_SUPPORTED;
     }
 
