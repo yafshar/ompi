@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Cisco Systems, Inc.  All rights reserved
+ * Copyright (c) 2008-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2008-2009 Sun Microystems, Inc.  All rights reserved
  * $COPYRIGHT$
  *
@@ -20,6 +20,7 @@
 #include "ompi/mca/pml/base/pml_base_recvreq.h"
 #include "opal/datatype/opal_datatype.h"
 #include "ompi/datatype/ompi_datatype.h"
+#include "ompi/proc/proc.h"
 
 /*
  * Define ompi_field_offset() to be a debugging macro only -- just

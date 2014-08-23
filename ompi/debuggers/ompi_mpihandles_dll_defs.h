@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
@@ -74,6 +74,8 @@ struct ompi_mpidbg_comm_handle_t {
     /* Information about each process in the local group (in
        communicator rank order, length: comm_num_local_procs) */
     struct mpidbg_process_t *comm_local_procs;
+    /* The OPAL process name of each local group process */
+    opal_process_name_t *comm_local_proc_names;
 
     /* For intercommunicators, the number of processes in the remote
        group */
@@ -82,6 +84,8 @@ struct ompi_mpidbg_comm_handle_t {
        remote group (in communicator rank order, length:
        comm_num_remote_procs) */
     struct mpidbg_process_t *comm_remote_procs;
+    /* The OPAL process name of each remote group process */
+    opal_process_name_t *comm_remote_proc_names;
 
     /* For cartesian communicators, the number of dimensions */
     int comm_cart_num_dims;

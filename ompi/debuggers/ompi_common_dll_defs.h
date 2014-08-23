@@ -255,6 +255,29 @@ typedef struct
             int name;
         } offset;
     } ompi_datatype_t;
+    /* OMPI proc structure */
+    struct {
+        mqs_type *type;
+        int size;
+        struct {
+            int super;
+        } offset;
+    } ompi_proc_t;
+    /* OPAL proc structure */
+    struct {
+        mqs_type *type;
+        int size;
+        struct {
+            int proc_name;
+            int proc_arch;
+            int proc_hostname;
+        } offset;
+    } opal_proc_t;
+    /* opal_process_name_t */
+    struct {
+        mqs_type *type;
+        int size;
+    } opal_process_name_t;
 
     /* For the caller to hang their own stuff */
     void *extra;

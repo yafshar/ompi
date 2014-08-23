@@ -499,6 +499,41 @@ int ompi_fill_in_type_info(mqs_image *image, char **message)
             i_info->ompi_datatype_t.offset.size += super_offset;
         }
     }
+    {
+        mqs_type* qh_type = mqs_find_type( image, "ompi_proc_t", mqs_lang_c );
+        if( !qh_type ) {
+            missing_in_action = "ompi_proc_t";
+            goto type_missing;
+        }
+        i_info->ompi_proc_t.type = qh_type;
+        i_info->ompi_proc_t.size = mqs_sizeof(qh_type);
+        ompi_field_offset(i_info->ompi_proc_t.offset.super,
+                          qh_type, ompi_proc_t, super);
+    }
+    {
+        mqs_type* qh_type = mqs_find_type( image, "opal_proc_t", mqs_lang_c );
+        if( !qh_type ) {
+            missing_in_action = "opal_proc_t";
+            goto type_missing;
+        }
+        i_info->ompi_proc_t.type = qh_type;
+        i_info->ompi_proc_t.size = mqs_sizeof(qh_type);
+        ompi_field_offset(i_info->opal_proc_t.offset.proc_name,
+                          qh_type, opal_proc_t, proc_name);
+        ompi_field_offset(i_info->opal_proc_t.offset.proc_arch,
+                          qh_type, opal_proc_t, proc_arch);
+        ompi_field_offset(i_info->opal_proc_t.offset.proc_hostname,
+                          qh_type, opal_proc_t, proc_hostname);
+    }
+    {
+        mqs_type* qh_type = mqs_find_type( image, "opal_process_name_t", mqs_lang_c );
+        if( !qh_type ) {
+            missing_in_action = "opal_process_name_t";
+            goto type_missing;
+        }
+        i_info->ompi_proc_t.type = qh_type;
+        i_info->ompi_proc_t.size = mqs_sizeof(qh_type);
+    }
 
     /* All the types are here. Let's succesfully return. */
     return mqs_ok;

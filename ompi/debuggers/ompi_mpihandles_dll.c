@@ -311,6 +311,61 @@ void mpidbg_finalize_per_image(mqs_image *image, mqs_image_info *info)
 
 /*---------------------------------------------------------------------*/
 
+/*
+ * Mapping of OPAL names to MCW ranks (or unknown ranks)
+ */
+typedef struct dbg_ompi_found_name_t {
+    opal_process_name_t name;
+    /* MCW rank corresponding to this OPAL name, or a unique ID if we
+       can't find this name in our MCW */
+    int mcw_rank;
+} dbg_ompi_found_name_t;
+
+static dbg_ompi_found_name_t *opal_names = NULL;
+static int opal_names_len = 0;
+static int opal_names_max_len = 0;
+static int next_unknown_rank = -1;
+
+/*
+ * Look up an MCW rank/unique ID based on an OPAL name.
+ */
+static int lookup_mcw_rank(opal_process_name_t name, int *rank)
+{
+    int i;
+
+    /* See if we know this name already */
+    for (i = 0; i < opal_names_len; ++i) {
+        if (opal_names[i].name == name) {
+            *rank = opal_names[i].mcw_rank;
+            return MPIDBG_SUCCESS;
+        }
+    }
+
+    /* We need to add this new name to the array.  Do we need to grow
+       the array? */
+    if (opal_names_len == opal_names_max_len) {
+        opal_names_max_len += 20;
+        dbg_ompi_found_name_t *bigger =
+            mqs_malloc(sizeof(dbg_ompi_found_name_t) * opal_names_max_len);
+        if (NULL == bigger) {
+            return MPIDBG_ERR_NO_MEM;
+        }
+        memcpy(bigger, opal_names,
+               sizeof(dbg_ompi_found_name_t) * opal_names_len);
+    }
+
+    /* Save the new name in the array */
+    ++opal_names_len;
+    opal_names[opal_names_len].name = name;
+    opal_names[opal_names_len].mcw_rank =
+        *rank = next_unknown_rank;
+    --next_unknown_rank;
+
+    return MPIDBG_SUCCESS;
+}
+
+/*---------------------------------------------------------------------*/
+
 /* Setup information needed for a specific process.  The debugger
  * assumes that this will hang something onto the process, if nothing
  * is attached to it, then TV will believe that this process has no
@@ -402,6 +457,35 @@ int mpidbg_init_per_process(mqs_process *process,
         mpidbg_status_name_map[MPIDBG_STATUS_MAX].map_name = NULL;
     }
 
+    /* Map all the proc names in MCW to ranks.  Use the regular
+       mpidbg_comm_query() to do the group/OPAL process name lookups
+       on mpi_mpi_comm_world, and then fill in the global opal_names
+       table with that info. */
+    struct mpidbg_comm_handle_t *ch;
+    mqs_taddr_t comm_world;
+    if (mqs_ok != mqs_find_symbol(image, "ompi_mpi_comm_world", &comm_world)) {
+        return MPIDBG_ERR_NOT_FOUND;
+    }
+    if (MPIDBG_SUCCESS != mpidbg_comm_query(process, comm_world, &ch)) {
+        return MPIDBG_ERR_NOT_FOUND;
+    }
+
+    /* Convert what we got back to the internal
+       ompi_mpidbg_comm_handle_t so that we can access all the secret
+       goodness inside */
+    struct ompi_mpidbg_comm_handle_t *och;
+    och = (struct ompi_mpidbg_comm_handle_t*) ch;
+    opal_names = mqs_malloc(sizeof(opal_process_name_t) * och->comm_size);
+    if (NULL == opal_names) {
+        mpidbg_comm_handle_free(ch);
+        return MPIDBG_ERR_NO_MEM;
+    }
+    for (int i = 0; i < och->comm_size; ++i) {
+        opal_names[i].name = och->comm_local_proc_names[i];
+        opal_names[i].mcw_rank = i;
+    }
+    mpidbg_comm_handle_free(ch);
+
     /* All done */
     return MPIDBG_SUCCESS;
 }
@@ -422,12 +506,97 @@ void mpidbg_finalize_per_process(mqs_process *process, mqs_process_info *info)
 
 /*---------------------------------------------------------------------*/
 
+/*
+ * Read a dense OMPI group
+ */
+static int read_group_names_dense(mqs_process *process,
+                                  mpi_process_info *p_info,
+                                  mqs_image *image,
+                                  mpi_image_info *i_info,
+                                  mqs_taddr_t group,
+                                  opal_process_name_t **onames)
+{
+    int i, ret, proc_count;
+    mqs_taddr_t proc_ptrs, ompi_proc, opal_proc;
+    opal_process_name_t *names;
+
+    /* How many procs are in this group? */
+    proc_count =
+        ompi_fetch_int(process, group +
+                       i_info->ompi_group_t.offset.grp_proc_count, p_info);
+
+    /* Allocate the output group */
+    names = mqs_malloc(sizeof(opal_process_name_t) * proc_count);
+    if (NULL == names) {
+        return MPIDBG_ERR_NO_MEM;
+    }
+
+    /* Get some offets that we'll use in the loop */
+    size_t offset_pptrs = i_info->ompi_group_t.offset.grp_proc_pointers;
+    size_t offset_opal = i_info->ompi_proc_t.offset.super;
+    size_t offset_name = i_info->opal_proc_t.offset.proc_name;
+    size_t name_size = i_info->opal_process_name_t.size;
+
+    /* Find each proc's name */
+    proc_ptrs = ompi_fetch_pointer(process, group + offset_pptrs, p_info);
+    for (i = 0; i < proc_count; ++i) {
+        ompi_proc = ompi_fetch_pointer(process, proc_ptrs + i, p_info);
+        opal_proc =
+            ompi_fetch_pointer(process, ompi_proc + offset_opal, p_info);
+
+        ret = mqs_fetch_data(process, opal_proc + offset_name,
+                             name_size, &names[i]);
+        if (mqs_ok != ret) {
+            goto error;
+        }
+    }
+
+    /* All done */
+    *onames = names;
+    return MPIDBG_SUCCESS;
+
+ error:
+    if (NULL != names) {
+        mqs_free(names);
+    }
+
+    return ret;
+}
+
+static int read_group_names(mqs_process *process, mpi_process_info *p_info,
+                            mqs_image *image, mpi_image_info *i_info,
+                            mqs_taddr_t group, opal_process_name_t **onames)
+{
+    int flags;
+
+    flags = ompi_fetch_int(process, group +
+                           i_info->ompi_group_t.offset.grp_flags, p_info);
+
+    if (flags & OMPI_GROUP_DENSE) {
+        return read_group_names_dense(process, p_info, image, i_info,
+                                      group, onames);
+    } else if (flags & OMPI_GROUP_SPORADIC) {
+        /* JMS not yet supported */
+        fprintf(stderr, "Call to read SPORADIC group -- unsuppported\n");
+    } else if (flags & OMPI_GROUP_STRIDED) {
+        /* JMS not yet supported */
+        fprintf(stderr, "Call to read STRIDED group -- unsuppported\n");
+    } else if (flags & OMPI_GROUP_BITMAP) {
+        /* JMS not yet supported */
+        fprintf(stderr, "Call to read BITMAP group -- unsuppported\n");
+    }
+
+    return MPIDBG_ERR_NOT_FOUND;
+}
+
+/*---------------------------------------------------------------------*/
+
+
 int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
                       struct mpidbg_comm_handle_t **ch)
 {
-    int flags, err;
+    int i, flags, err;
     mqs_taddr_t group, topo, keyhash;
-    struct ompi_mpidbg_comm_handle_t *handle;
 
     /* Set it to NULL until we have a full answer to return */
     (*ch) = NULL;
@@ -453,12 +622,11 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
     mpi_image_info *i_info = (mpi_image_info *) image_info;
 
     /* Allocate an OMPI comm debugger handle */
+    struct ompi_mpidbg_comm_handle_t *handle;
     handle = mqs_malloc(sizeof(*handle));
     if (NULL == handle) {
         return MPIDBG_ERR_NO_MEM;
     }
-    /* JMS temporarily zero everything out.  Remove this when we fill
-       in all the fields */
     memset((void*) handle, 0, sizeof(*handle));
     handle->comm_handle.c_comm = comm;
     handle->comm_handle.image = image;
@@ -522,9 +690,34 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
        override below if this is an intercommunicator. */
     handle->comm_size = handle->comm_num_local_procs;
 
-    /* JMS fill this in: waiting to decide between mpidbg_process_t
-       and mqs_process_location */
-    handle->comm_local_procs = NULL;
+    if (MPIDBG_SUCCESS !=
+        read_group_names(process, p_info, image, i_info,
+                         group, &handle->comm_local_proc_names)) {
+        err = MPIDBG_ERR_NO_MEM;
+        goto error;
+    }
+
+    handle->comm_local_procs = mqs_malloc(sizeof(struct mpidbg_process_t) *
+                                          handle->comm_num_local_procs);
+    if (NULL == handle->comm_local_procs) {
+        err = MPIDBG_ERR_NO_MEM;
+        goto error;
+    }
+
+    /* Need to ensure that if opal_names==NULL, then this is the first
+       time through this function, and we're looking up
+       ompi_mpi_comm_world itself (i.e., it's ok to not fill in
+       comm_local_procs[x].mpi_comm_world_rank) */
+    if (NULL == opal_names) {
+        assert(-1 == next_unknown_rank);
+    }
+    for (i = 0; i < handle->comm_num_local_procs; ++i) {
+        err = lookup_mcw_rank(handle->comm_local_proc_names[i],
+                              &handle->comm_local_procs[i].mpi_comm_world_rank);
+        if (MPIDBG_SUCCESS != err) {
+            goto error;
+        }
+    }
 
     /* Look up the remote group (if relevant) */
     if (0 != (flags & OMPI_COMM_INTER)) {
@@ -535,10 +728,28 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
                                                         group + i_info->ompi_group_t.offset.grp_proc_count,
                                                         p_info);
         handle->comm_size = handle->comm_num_remote_procs;
-
-        /* JMS fill this in: waiting to decide between
-           mpidbg_process_t and mqs_process_location */
         handle->comm_remote_procs = NULL;
+
+        if (MPIDBG_SUCCESS !=
+            read_group_names(process, p_info, image, i_info, group,
+                             &handle->comm_remote_proc_names)) {
+            err = MPIDBG_ERR_NO_MEM;
+            goto error;
+        }
+
+        handle->comm_remote_procs = mqs_malloc(sizeof(struct mpidbg_process_t) *
+                                               handle->comm_num_remote_procs);
+        if (NULL == handle->comm_remote_procs) {
+            err = MPIDBG_ERR_NO_MEM;
+            goto error;
+        }
+        for (i = 0; i < handle->comm_num_remote_procs; ++i) {
+            err = lookup_mcw_rank(handle->comm_remote_proc_names[i],
+                                  &handle->comm_remote_procs[i].mpi_comm_world_rank);
+            if (MPIDBG_SUCCESS != err) {
+                goto error;
+            }
+        }
     } else {
         handle->comm_num_remote_procs = 0;
         handle->comm_remote_procs = NULL;
@@ -675,6 +886,12 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
     return MPIDBG_SUCCESS;
 
  error:
+    if (NULL != handle->comm_local_procs) {
+        mqs_free(handle->comm_local_procs);
+    }
+    if (NULL != handle->comm_remote_procs) {
+        mqs_free(handle->comm_remote_procs);
+    }
     if (NULL != handle->comm_cart_dims) {
         mqs_free(handle->comm_cart_dims);
     }
@@ -720,6 +937,19 @@ int mpidbg_comm_handle_free(struct mpidbg_comm_handle_t *ch)
         if (NULL != handle->comm_graph_edges) {
             mqs_free(handle->comm_graph_edges);
         }
+    }
+
+    if (NULL != handle->comm_local_procs) {
+        mqs_free(handle->comm_local_procs);
+    }
+    if (NULL != handle->comm_local_proc_names) {
+        mqs_free(handle->comm_local_proc_names);
+    }
+    if (NULL != handle->comm_remote_procs) {
+        mqs_free(handle->comm_remote_procs);
+    }
+    if (NULL != handle->comm_remote_proc_names) {
+        mqs_free(handle->comm_remote_proc_names);
     }
 
     /* Free attributes */
@@ -794,15 +1024,8 @@ int mpidbg_comm_query_procs(struct mpidbg_comm_handle_t *ch,
     if (NULL == *comm_local_procs) {
         return MPIDBG_ERR_NO_MEM;
     }
-    /* JMS This is likely NULL for now */
-    if (NULL != handle->comm_local_procs) {
-        memcpy(*comm_local_procs, handle->comm_local_procs,
-               sizeof(struct mpidbg_process_t) * *comm_num_local_procs);
-    } else {
-        fprintf(stderr, "mpidbg_comm_query_procs: WARNING: comm_local_procs still to be implemented\n");
-        memset(*comm_local_procs, 0,
-               sizeof(struct mpidbg_process_t) * *comm_num_local_procs);
-    }
+    memcpy(*comm_local_procs, handle->comm_local_procs,
+           sizeof(struct mpidbg_process_t) * *comm_num_local_procs);
 
     /* If there are remote procs, alloc and copy them, too */
     *comm_num_remote_procs = handle->comm_num_remote_procs;
