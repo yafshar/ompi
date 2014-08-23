@@ -209,9 +209,21 @@ enum mpidbg_return_codes_t {
 /* Information about MPI processes */
 struct mpidbg_process_t {
     /* JMS: need something to uniquely ID MPI processes in the
-       presence of MPI_COMM_SPAWN */
+       presence of MPI_COMM_SPAWN.  It seems like we need to solve the
+       MPIR process identification issue, and use the same convention
+       here.  Asked Martin to convey to Kathryn that we should start
+       working on MPIR2, and include this in the list of issues to
+       solve.
 
-    /* Global rank in MPI_COMM_WORLD */
+       In the meantime, we'll return global rank in MPI_COMM_WORLD.
+
+       NOTE: If the peer process is not in this process'
+       MPI_COMM_WORLD, return a unique negative rank that represents
+       that peer process.  Here's the fun part: if peer process X is
+       not in this process' MPI_COMM_WORLD *and* is in multiple
+       different communicators, it will return the *same* negative
+       rank for every instance.  I.e., you can at least uniquely
+       identify peer X across multiple communicators. */
     int mpi_comm_world_rank;
 };
 /* ==> JMS Should we just use mqs_process_location instead?  George
