@@ -765,12 +765,16 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
     if (0 != topo &&
         0 != (handle->comm_bitflags & MPIDBG_COMM_INFO_CARTESIAN)) {
         int i, ndims, tmp;
-        mqs_taddr_t dims, periods, coords;
+        mqs_taddr_t dims, periods, coords, mtc;
+
+        mtc = ompi_fetch_pointer(process,
+                                 topo + i_info->mca_topo_base_module_t.offset.mtc,
+                                 p_info);
 
         /* Alloc space for copying arrays */
         handle->comm_cart_num_dims = ndims =
             ompi_fetch_int(process,
-                           topo + i_info->mca_topo_base_module_t.offset.mtc_cart.ndims,
+                           mtc + i_info->mca_topo_base_module_t.offset.mtc_cart.ndims,
                            p_info);
         handle->comm_cart_dims = mqs_malloc(ndims * sizeof(int));
         if (NULL == handle->comm_cart_dims) {
@@ -792,13 +796,13 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
         /* Retrieve the dimension and periodic description data from
            the two arrays on the image's communicator */
         dims = ompi_fetch_pointer(process,
-                                 topo + i_info->mca_topo_base_module_t.offset.mtc_cart.dims,
+                                  mtc + i_info->mca_topo_base_module_t.offset.mtc_cart.dims,
                                  p_info);
         periods = ompi_fetch_pointer(process,
-                                 topo + i_info->mca_topo_base_module_t.offset.mtc_cart.periods,
+                                     mtc + i_info->mca_topo_base_module_t.offset.mtc_cart.periods,
                                  p_info);
         coords = ompi_fetch_pointer(process,
-                                 topo + i_info->mca_topo_base_module_t.offset.mtc_cart.coords,
+                                    mtc + i_info->mca_topo_base_module_t.offset.mtc_cart.coords,
                                  p_info);
 
         for (i = 0; i < ndims; ++i) {
@@ -811,12 +815,16 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
     } else if (0 != topo &&
                0 != (handle->comm_bitflags & MPIDBG_COMM_INFO_GRAPH)) {
         int i, nnodes;
-        mqs_taddr_t index, edges;
+        mqs_taddr_t index, edges, mtc;
+
+        mtc = ompi_fetch_pointer(process,
+                                 topo + i_info->mca_topo_base_module_t.offset.mtc,
+                                 p_info);
 
         /* Alloc space for copying the indexes */
         handle->comm_graph_num_nodes = nnodes =
             ompi_fetch_int(process,
-                           topo + i_info->mca_topo_base_module_t.offset.mtc_graph.nnodes,
+                           mtc + i_info->mca_topo_base_module_t.offset.mtc_graph.nnodes,
                            p_info);
         handle->comm_graph_index = mqs_malloc(nnodes * sizeof(int));
         if (NULL == handle->comm_graph_index) {
@@ -826,7 +834,7 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
 
         /* Retrieve the index data */
         index = ompi_fetch_pointer(process,
-                                 topo + i_info->mca_topo_base_module_t.offset.mtc_graph.index,
+                                 mtc + i_info->mca_topo_base_module_t.offset.mtc_graph.index,
                                  p_info);
         for (i = 0; i < nnodes; ++i) {
             handle->comm_graph_index[i] =
@@ -842,7 +850,7 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
 
         /* Retrieve the edge data */
         edges = ompi_fetch_pointer(process,
-                                 topo + i_info->mca_topo_base_module_t.offset.mtc_graph.edges,
+                                 mtc + i_info->mca_topo_base_module_t.offset.mtc_graph.edges,
                                  p_info);
         for (i = 0;
              i < handle->comm_graph_index[handle->comm_graph_num_nodes - 1];
