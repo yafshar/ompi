@@ -812,6 +812,8 @@ int mpidbg_comm_query(mqs_process *process, mqs_taddr_t comm,
             tmp = ompi_fetch_int(process, periods + (sizeof(int) * i), p_info);
             handle->comm_cart_periods[i] = (int8_t) tmp;
             printf("mpidbg: cart comm: dimension %d: (length %d, periodic: %d)\n", i, handle->comm_cart_dims[i], tmp);
+            handle->comm_cart_coords[i] =
+                ompi_fetch_int(process, coords + (sizeof(int) * i), p_info);
         }
     } else if (0 != topo &&
                0 != (handle->comm_bitflags & MPIDBG_COMM_INFO_GRAPH)) {
