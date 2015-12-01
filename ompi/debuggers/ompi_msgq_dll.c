@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2007-2009 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2004-2010 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
@@ -366,7 +366,7 @@ int mqs_setup_image (mqs_image *image, const mqs_image_callbacks *icb)
 int mqs_image_has_queues (mqs_image *image, char **message)
 {
     mpi_image_info * i_info = (mpi_image_info *)mqs_get_image_info (image);
-    
+
     *message = NULL;
     i_info->extra = NULL;
 

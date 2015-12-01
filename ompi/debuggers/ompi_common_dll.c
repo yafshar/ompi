@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
@@ -546,7 +546,7 @@ int ompi_fill_in_type_info(mqs_image *image, char **message)
      */
 
     {
-        char *default_msg = 
+        char *default_msg =
 "The symbols and types in the Open MPI library used to extract debugging\n"
 "information cannot be found.  This is probably an Open MPI version or\n"
 "configuration problem.\n\n"

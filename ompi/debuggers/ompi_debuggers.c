@@ -10,7 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012-2015 Los Alamos National Security, LLC. All rights
  *                         reserved.
  * $COPYRIGHT$
@@ -131,7 +131,7 @@ OMPI_DECLSPEC char *MPIR_debug_abort_string = "";
 static char *ompi_debugger_dll_path = NULL;
 
 /* Check for a file in few direct ways for portability */
-static void check(char *dir, char *file, char ***locations) 
+static void check(char *dir, char *file, char ***locations)
 {
     int i;
     char *str;
@@ -139,11 +139,11 @@ static void check(char *dir, char *file, char ***locations)
 
     for (i = 0; NULL != dso_suffixes && NULL != dso_suffixes[i]; ++i) {
         asprintf(&str, "%s/%s%s", dir, file, dso_suffixes[i]);
-    
+
 #if defined(HAVE_SYS_STAT_H)
         {
             struct stat buf;
-            
+
             /* Use stat() */
             if (0 == stat(str, &buf)) {
                 opal_argv_append_nosize(locations, str);
@@ -152,7 +152,7 @@ static void check(char *dir, char *file, char ***locations)
 #else
         {
             FILE *fp;
-            
+
             /* Just try to open the file */
             if (NULL != (fp = fopen(str, "r"))) {
                 fclose(fp);

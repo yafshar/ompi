@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
@@ -38,8 +38,8 @@
 #include "ompi_common_dll_defs.h"
 #include "mpihandles_interface.h"
 
-/* 
- * Magic numbers for sanity checking 
+/*
+ * Magic numbers for sanity checking
  */
 enum {
     OMPI_DBG_COMM_MAGIC_NUMBER = 0x1122,
