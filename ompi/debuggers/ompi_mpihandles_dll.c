@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
@@ -335,7 +335,8 @@ static int lookup_mcw_rank(opal_process_name_t name, int *rank)
 
     /* See if we know this name already */
     for (i = 0; i < opal_names_len; ++i) {
-        if (opal_names[i].name == name) {
+        if (opal_names[i].name.jobid == name.jobid &&
+            opal_names[i].name.vpid == name.vpid) {
             *rank = opal_names[i].mcw_rank;
             return MPIDBG_SUCCESS;
         }
