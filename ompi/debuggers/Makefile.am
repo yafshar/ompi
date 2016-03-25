@@ -9,7 +9,7 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2007-2016 Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -38,7 +38,8 @@ CFLAGS = $(CFLAGS_WITHOUT_OPTFLAGS) $(DEBUGGER_CFLAGS)
 headers = \
         debuggers.h \
         ompi_common_dll_defs.h \
-        msgq_interface.h ompi_msgq_dll_defs.h
+        msgq_interface.h ompi_msgq_dll_defs.h \
+        mpihandles_interface.h
 
 # Simple checks to ensure that the DSOs are functional
 
