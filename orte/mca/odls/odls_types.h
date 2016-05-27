@@ -80,6 +80,9 @@ typedef uint8_t orte_daemon_cmd_flag_t;
 /* add procs for the DVM */
 #define ORTE_DAEMON_DVM_ADD_PROCS           (orte_daemon_cmd_flag_t) 30
 
+/* for debug purposes, get stacktraces from all application procs */
+#define ORTE_DAEMON_GET_STACKTRACES         (orte_daemon_cmd_flag_t) 31
+
 /*
  * Struct written up the pipe from the child to the parent.
  */

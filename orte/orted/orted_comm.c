@@ -111,6 +111,8 @@ void orte_daemon_recv(int status, orte_process_name_t* sender,
     bool found = false;
     orte_node_t *node;
     orte_grpcomm_signature_t *sig;
+    FILE *fp;
+    char gscmd[256], path[1035], *pathptr;
 
     /* unpack the command */
     n = 1;
@@ -1071,6 +1073,54 @@ void orte_daemon_recv(int status, orte_process_name_t* sender,
         }
         break;
 
+    case ORTE_DAEMON_GET_STACKTRACES:
+        /* prep the response */
+        answer = OBJ_NEW(opal_buffer_t);
+        pathptr = path;
+        /* hit each local process with a gstack command */
+        for (i=0; i < orte_local_children->size; i++) {
+            if (NULL != (proct = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i)) &&
+                ORTE_FLAG_TEST(proct, ORTE_PROC_FLAG_ALIVE)) {
+                relay_msg = OBJ_NEW(opal_buffer_t);
+                if (OPAL_SUCCESS != opal_dss.pack(relay_msg, &proct->name, 1, ORTE_NAME)) {
+                    OBJ_RELEASE(relay_msg);
+                    break;
+                }
+                (void)snprintf(gscmd, 256, "gstack %lu", (unsigned long)proct->pid);
+                fp = popen(gscmd, "r");
+                if (NULL == fp) {
+                    /* can't run it - just return the buffer so
+                     * the HNP doesn't hang */
+                    break;
+                }
+                /* Read the output a line at a time and pack it for transmission */
+                memset(path, 0, sizeof(path));
+                while (fgets(path, sizeof(path)-1, fp) != NULL) {
+                    if (OPAL_SUCCESS != opal_dss.pack(relay_msg, &pathptr, 1, OPAL_STRING)) {
+                        OBJ_RELEASE(relay_msg);
+                        break;
+                    }
+                    memset(path, 0, sizeof(path));
+                }
+                /* close */
+                pclose(fp);
+                /* transfer this load */
+                if (OPAL_SUCCESS != opal_dss.pack(answer, &relay_msg, 1, OPAL_BUFFER)) {
+                    OBJ_RELEASE(relay_msg);
+                    break;
+                }
+                OBJ_RELEASE(relay_msg);
+            }
+        }
+        /* always send our response */
+        if (0 > (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, answer,
+                                               ORTE_RML_TAG_STACKTRACE,
+                                               orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_RELEASE(answer);
+        }
+        break;
+
     default:
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
     }
@@ -1138,6 +1188,9 @@ static char *get_orted_comm_cmd_str(int command)
         return strdup("ORTE_DAEMON_DVM_NIDMAP_CMD");
     case ORTE_DAEMON_DVM_ADD_PROCS:
         return strdup("ORTE_DAEMON_DVM_ADD_PROCS");
+
+    case ORTE_DAEMON_GET_STACKTRACES:
+        return strdup("ORTE_DAEMON_GET_STACKTRACES");
 
     default:
         return strdup("Unknown Command!");

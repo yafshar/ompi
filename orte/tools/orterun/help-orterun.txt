@@ -645,11 +645,11 @@ Please correct this value and try again.
 The user-provided time limit for job execution has been
 reached:
 
-  MPIEXEC_TIMEOUT: %s seconds
+  MPIEXEC_TIMEOUT: %d seconds
 
 The job will now be aborted. Please check your code and/or
 adjust/remove the job execution time limit (as specified
-by MPIEXEC_TIMEOUT in your environment).
+by MPIEXEC_TIMEOUT in your environment or -timeout on the cmd line).
 #
 [orterun:conflict-env-set]
 ERROR: You have attempted to pass environment variables to Open MPI
@@ -669,3 +669,11 @@ system's restriction for Unix's socket's path-length.
 Please try to set TMPDIR to something short (like /tmp) or change
 Your computer's name (see uname -n).
 #
+[orterun:timeoutconflict]
+Conflicting requests for timeout were given:
+
+  -timeout command line option:  %d
+  MPIEXEC_TIMEOUT envar:         %s
+
+Only one method should be provided, or else they must agree. Please
+correct and retry.

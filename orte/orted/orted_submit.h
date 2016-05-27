@@ -92,6 +92,9 @@ struct orte_cmd_options_t {
     bool enable_recovery;
     char *hnp;
     bool staged_exec;
+    int timeout;
+    bool report_state_on_timeout;
+    bool get_stacktraces;
 };
 typedef struct orte_cmd_options_t orte_cmd_options_t;
 ORTE_DECLSPEC extern orte_cmd_options_t orte_cmd_options;
