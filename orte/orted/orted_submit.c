@@ -10,7 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2006-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2006-2016 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2007-2009 Sun Microsystems, Inc. All rights reserved.
  * Copyright (c) 2007-2016 Los Alamos National Security, LLC.  All rights
  *                         reserved.
@@ -2851,18 +2851,23 @@ static void _stacktrace_recv(int status, orte_process_name_t* sender,
     char *st;
     int32_t cnt;
     orte_process_name_t name;
+    char *hostname;
+    pid_t pid;
 
     /* unpack the stacktrace blob */
     cnt = 1;
     while (OPAL_SUCCESS == opal_dss.unpack(buffer, &blob, &cnt, OPAL_BUFFER)) {
         /* first piece is the name of the process */
         cnt = 1;
-        if (OPAL_SUCCESS != opal_dss.unpack(blob, &name, &cnt, ORTE_NAME)) {
+        if (OPAL_SUCCESS != opal_dss.unpack(blob, &name, &cnt, ORTE_NAME) ||
+            OPAL_SUCCESS != opal_dss.unpack(blob, &hostname, &cnt, OPAL_STRING) ||
+            OPAL_SUCCESS != opal_dss.unpack(blob, &pid, &cnt, OPAL_PID)) {
             OBJ_RELEASE(blob);
             continue;
         }
-        fprintf(stderr, "STACKTRACE FOR PROC %s\n", ORTE_NAME_PRINT(&name));
-        /* unpack the stacktrace until complete */
+        fprintf(stderr, "STACK TRACE FOR PROC %s (%s, PID %lu)\n", ORTE_NAME_PRINT(&name), hostname, (unsigned long) pid);
+        free(hostname);
+        /* unpack the stack_trace until complete */
         cnt = 1;
         while (OPAL_SUCCESS == opal_dss.unpack(blob, &st, &cnt, OPAL_STRING)) {
             fprintf(stderr, "\t%s", st);  // has its own newline
@@ -2945,6 +2950,8 @@ void orte_timeout_wakeup(int sd, short args, void *cbdata)
         orte_daemon_cmd_flag_t command = ORTE_DAEMON_GET_STACKTRACES;
         opal_buffer_t *buffer;
         orte_grpcomm_signature_t *sig;
+
+        fprintf(stderr, "Waiting for stack traces (this may take a few moments)...\n");
 
         /* set the recv */
         orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_STACKTRACE,
