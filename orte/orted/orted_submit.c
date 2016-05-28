@@ -2841,9 +2841,9 @@ void orte_debugger_detached(int fd, short event, void *cbdata)
 }
 
 static uint32_t ntraces = 0;
-static orte_timer_t stacktrace_timer;
+static orte_timer_t stack_trace_timer;
 
-static void _stacktrace_recv(int status, orte_process_name_t* sender,
+static void stack_trace_recv(int status, orte_process_name_t* sender,
                              opal_buffer_t *buffer, orte_rml_tag_t tag,
                              void* cbdata)
 {
@@ -2854,7 +2854,7 @@ static void _stacktrace_recv(int status, orte_process_name_t* sender,
     char *hostname;
     pid_t pid;
 
-    /* unpack the stacktrace blob */
+    /* unpack the stack_trace blob */
     cnt = 1;
     while (OPAL_SUCCESS == opal_dss.unpack(buffer, &blob, &cnt, OPAL_BUFFER)) {
         /* first piece is the name of the process */
@@ -2881,7 +2881,7 @@ static void _stacktrace_recv(int status, orte_process_name_t* sender,
     ++ntraces;
     if (orte_process_info.num_procs == ntraces) {
         /* cancel the timeout */
-        OBJ_DESTRUCT(&stacktrace_timer);
+        OBJ_DESTRUCT(&stack_trace_timer);
         /* abort the job */
         ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_ALL_JOBS_COMPLETE);
         /* set the global abnormal exit flag  */
@@ -2889,7 +2889,7 @@ static void _stacktrace_recv(int status, orte_process_name_t* sender,
     }
 }
 
-static void stacktrace_timeout(int sd, short args, void *cbdata)
+static void stack_trace_timeout(int sd, short args, void *cbdata)
 {
     /* abort the job */
     ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_ALL_JOBS_COMPLETE);
@@ -2944,18 +2944,18 @@ void orte_timeout_wakeup(int sd, short args, void *cbdata)
             rc = opal_hash_table_get_next_key_uint32(orte_job_data, &key, (void **)&jdata, nptr, &nptr);
         }
     }
-    /* if they asked for stacktraces, attempt to get them, but timeout
+    /* if they asked for stack_traces, attempt to get them, but timeout
      * if we cannot do so */
-    if (orte_cmd_options.get_stacktraces) {
-        orte_daemon_cmd_flag_t command = ORTE_DAEMON_GET_STACKTRACES;
+    if (orte_cmd_options.get_stack_traces) {
+        orte_daemon_cmd_flag_t command = ORTE_DAEMON_GET_STACK_TRACES;
         opal_buffer_t *buffer;
         orte_grpcomm_signature_t *sig;
 
         fprintf(stderr, "Waiting for stack traces (this may take a few moments)...\n");
 
         /* set the recv */
-        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_STACKTRACE,
-                                ORTE_RML_PERSISTENT, _stacktrace_recv, NULL);
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_STACK_TRACE,
+                                ORTE_RML_PERSISTENT, stack_trace_recv, NULL);
 
         /* setup the buffer */
         buffer = OBJ_NEW(opal_buffer_t);
@@ -2980,14 +2980,14 @@ void orte_timeout_wakeup(int sd, short args, void *cbdata)
         OBJ_RELEASE(buffer);
         /* maintain accounting */
         OBJ_RELEASE(sig);
-        /* we will terminate after we get the stacktraces, but set a timeout
+        /* we will terminate after we get the stack_traces, but set a timeout
          * just in case we never hear back from everyone */
-        OBJ_CONSTRUCT(&stacktrace_timer, orte_timer_t);
+        OBJ_CONSTRUCT(&stack_trace_timer, orte_timer_t);
         opal_event_evtimer_set(orte_event_base,
-                               stacktrace_timer.ev, stacktrace_timeout, NULL);
-        opal_event_set_priority(stacktrace_timer.ev, ORTE_ERROR_PRI);
-        stacktrace_timer.tv.tv_sec = 30;
-        opal_event_evtimer_add(stacktrace_timer.ev, &stacktrace_timer.tv);
+                               stack_trace_timer.ev, stack_trace_timeout, NULL);
+        opal_event_set_priority(stack_trace_timer.ev, ORTE_ERROR_PRI);
+        stack_trace_timer.tv.tv_sec = 30;
+        opal_event_evtimer_add(stack_trace_timer.ev, &stack_trace_timer.tv);
         return;
     }
   giveup:

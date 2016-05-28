@@ -164,7 +164,7 @@ BEGIN_C_DECLS
 #define ORTE_RML_TAG_NOTIFICATION           59
 
 /* stacktrace for debug */
-#define ORTE_RML_TAG_STACKTRACE             60
+#define ORTE_RML_TAG_STACK_TRACE            60
 
 #define ORTE_RML_TAG_MAX                   100
 

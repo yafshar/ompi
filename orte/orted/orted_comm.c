@@ -1075,7 +1075,7 @@ void orte_daemon_recv(int status, orte_process_name_t* sender,
         }
         break;
 
-    case ORTE_DAEMON_GET_STACKTRACES:
+    case ORTE_DAEMON_GET_STACK_TRACES:
         /* prep the response */
         answer = OBJ_NEW(opal_buffer_t);
         pathptr = path;
@@ -1144,7 +1144,7 @@ void orte_daemon_recv(int status, orte_process_name_t* sender,
         }
         /* always send our response */
         if (0 > (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, answer,
-                                               ORTE_RML_TAG_STACKTRACE,
+                                               ORTE_RML_TAG_STACK_TRACE,
                                                orte_rml_send_callback, NULL))) {
             ORTE_ERROR_LOG(ret);
             OBJ_RELEASE(answer);
@@ -1219,8 +1219,8 @@ static char *get_orted_comm_cmd_str(int command)
     case ORTE_DAEMON_DVM_ADD_PROCS:
         return strdup("ORTE_DAEMON_DVM_ADD_PROCS");
 
-    case ORTE_DAEMON_GET_STACKTRACES:
-        return strdup("ORTE_DAEMON_GET_STACKTRACES");
+    case ORTE_DAEMON_GET_STACK_TRACES:
+        return strdup("ORTE_DAEMON_GET_STACK_TRACES");
 
     default:
         return strdup("Unknown Command!");
