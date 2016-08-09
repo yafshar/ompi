@@ -153,7 +153,7 @@ opal_btl_usnic_check_rx_seq(
     /*
      * Handle piggy-backed ACK if present
      */
-    if (seg->rs_base.us_btl_header->ack_present) {
+    if (seg->rs_base.us_btl_header->btl_header_flags & OPAL_BTL_USNIC_HEADER_FLAG_ACK_PRESENT) {
 #if MSGDEBUG1
         opal_output(0, "Handle piggy-packed ACK seq %"UDSEQ"\n", seg->rs_base.us_btl_header->ack_seq);
 #endif

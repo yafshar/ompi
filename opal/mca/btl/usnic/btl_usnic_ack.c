@@ -188,6 +188,42 @@ opal_btl_usnic_handle_ack(
     opal_btl_usnic_check_rts(endpoint);
 }
 
+void
+opal_btl_usnic_handshake(
+    opal_btl_usnic_module_t *module,
+    opal_btl_usnic_endpoint_t *endpoint)
+{
+    opal_btl_usnic_ack_segment_t *handshake = {0};
+    opal_btl_usnic_segment_t *bseg;
+
+
+
+    /* Get an ACK frag.  If we don't get one, just discard this ACK. */
+    handshake = opal_btl_usnic_ack_segment_alloc(module);
+    bseg = &handshake->ss_base;
+    bseg->us_btl_handshake_header->hs_hdr.payload_type = OPAL_BTL_USNIC_PAYLOAD_TYPE_HANDSHAKE;
+    bseg->us_btl_handshake_header->peer_endpoint = (int64_t) endpoint;
+    assert(endpoint);
+
+    opal_output(0,"handshake, attached ep %d",(int64_t)endpoint);
+
+    if (OPAL_UNLIKELY(NULL == handshake)) {
+        return;
+    }
+
+    handshake->ss_len = sizeof(opal_btl_usnic_btl_handshake_header_t);
+
+    /* Do we need to check the connectivity?  If enabled, we'll check
+       the connectivity at either first send to peer X or first ACK to
+       peer X. */
+    opal_btl_usnic_check_connectivity(module, endpoint);
+
+    /* send the ACK */
+    opal_btl_usnic_post_ack(module, endpoint, handshake);
+
+    return;
+}
+
 /*
  * Send an ACK
  */
