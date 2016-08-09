@@ -289,8 +289,17 @@ opal_btl_usnic_recv_fast(opal_btl_usnic_module_t *module,
 
     bseg = &seg->rs_base;
 
-    /* Find out who sent this segment */
-    endpoint = lookup_sender(module, bseg);
+    /* If we did the handshake, the segment contained our endpoint, just use it. */
+    if(bseg->us_btl_header->btl_header_flags & OPAL_BTL_USNIC_HEADER_FLAG_ENDPOINT_CACHED){
+        endpoint = (opal_btl_usnic_endpoint_t*) bseg->us_btl_header->sender;
+    }
+    else {
+        /* Otherwise, find out who sent this segment */
+        endpoint = lookup_sender(module, bseg);
+
+        /* Try that handshaking again */
+        opal_btl_usnic_handshake(module, endpoint);
+    }
     seg->rs_endpoint = endpoint;
 
 #if 0
@@ -403,8 +412,17 @@ opal_btl_usnic_recv(opal_btl_usnic_module_t *module,
 
     bseg = &seg->rs_base;
 
-    /* Find out who sent this segment */
-    endpoint = lookup_sender(module, bseg);
+    /* If the segment contained a cached endpoint, we use that */
+    if(bseg->us_btl_header->btl_header_flags & OPAL_BTL_USNIC_HEADER_FLAG_ENDPOINT_CACHED) {
+        endpoint = (opal_btl_usnic_endpoint_t*) bseg->us_btl_header->sender;
+    }
+    else {
+        /* Otherwise, find out who sent this segment */
+        endpoint = lookup_sender(module, bseg);
+
+        /* Try that handshaking again */
+        opal_btl_usnic_handshake(module, endpoint);
+    }
     seg->rs_endpoint = endpoint;
 
     /* If this is a short incoming message (i.e., the message is

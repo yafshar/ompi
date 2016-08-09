@@ -785,7 +785,8 @@ opal_btl_usnic_create_endpoint(opal_btl_usnic_module_t *module,
     opal_mutex_unlock(&module->all_endpoints_lock);
 
     *endpoint_o = endpoint;
-    if(endpoint)
+
+    /* Endpoint successfully created, do the handshake with our peer */
     opal_btl_usnic_handshake(module, endpoint);
 
     return OPAL_SUCCESS;

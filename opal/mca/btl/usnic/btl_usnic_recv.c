@@ -350,15 +350,14 @@ void opal_btl_usnic_recv_call(opal_btl_usnic_module_t *module,
     else if (bseg->us_btl_header->payload_type == OPAL_BTL_USNIC_PAYLOAD_TYPE_HANDSHAKE) {
 
         /* If we have already done this, drop it */
-        if(endpoint->cached_endpoint != NULL) { return; }
+        if(endpoint->cached_endpoint != (uint64_t) NULL) { return; }
 
         /* Read the peer endpoint pointer and cache it in this endpoint */
         endpoint->cached_endpoint = bseg->us_hdr.uus_btl_handshake_header->peer_endpoint;
-        opal_output(0,"at %p cached %d",endpoint,endpoint->cached_endpoint);
 
-	/* Just making sure */
-        assert(endpoint->cached_endpoint != NULL);
-	goto repost;
+	    /* Just making sure */
+        assert(endpoint->cached_endpoint != (uint64_t) NULL);
+	    goto repost;
     }
 
     /***********************************************************************/
