@@ -786,9 +786,6 @@ opal_btl_usnic_create_endpoint(opal_btl_usnic_module_t *module,
 
     *endpoint_o = endpoint;
 
-    /* Endpoint successfully created, do the handshake with our peer */
-    opal_btl_usnic_handshake(module, endpoint);
-
     return OPAL_SUCCESS;
 }
 

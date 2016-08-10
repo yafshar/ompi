@@ -297,8 +297,10 @@ opal_btl_usnic_recv_fast(opal_btl_usnic_module_t *module,
         /* Otherwise, find out who sent this segment */
         endpoint = lookup_sender(module, bseg);
 
-        /* Try that handshaking again */
-        opal_btl_usnic_handshake(module, endpoint);
+        /* and try to send the handshake again */
+        if(NULL != endpoint) {
+            opal_btl_usnic_handshake(module, endpoint);
+        }
     }
     seg->rs_endpoint = endpoint;
 
@@ -420,8 +422,10 @@ opal_btl_usnic_recv(opal_btl_usnic_module_t *module,
         /* Otherwise, find out who sent this segment */
         endpoint = lookup_sender(module, bseg);
 
-        /* Try that handshaking again */
-        opal_btl_usnic_handshake(module, endpoint);
+        /* and try to send the handshake again */
+        if(NULL != endpoint) {
+            opal_btl_usnic_handshake(module, endpoint);
+        }
     }
     seg->rs_endpoint = endpoint;
 

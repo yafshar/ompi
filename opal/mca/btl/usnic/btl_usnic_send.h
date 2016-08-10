@@ -71,6 +71,11 @@ opal_btl_usnic_post_segment(
     if(endpoint->cached_endpoint){
         sseg->ss_base.us_btl_header->sender = endpoint->cached_endpoint;
         sseg->ss_base.us_btl_header->btl_header_flags |= OPAL_BTL_USNIC_HEADER_FLAG_ENDPOINT_CACHED;
+#ifdef MSGDEBUG3
+        opal_output(0,"post_segment: we have cached %p flag = %d",
+                sseg->ss_base.us_btl_header->sender,
+                sseg->ss_base.us_btl_header->btl_header_flags);
+#endif
     }
 
 #if MSGDEBUG1
@@ -124,6 +129,18 @@ opal_btl_usnic_post_ack(
     /* get channel and remote channel */
     opal_btl_usnic_channel_id_t channel_id = sseg->ss_channel;
     opal_btl_usnic_channel_t *channel = &module->mod_channels[channel_id];
+
+    /* If we have peer endpoint cached, put that in the sender field,
+     * flip a flag to let the receiver know we are using their pointer */
+    if(endpoint->cached_endpoint){
+        sseg->ss_base.us_btl_header->sender = endpoint->cached_endpoint;
+        sseg->ss_base.us_btl_header->btl_header_flags |= OPAL_BTL_USNIC_HEADER_FLAG_ENDPOINT_CACHED;
+#ifdef MSGDEBUG3
+        opal_output(0,"post_segment: we have cached %p flag = %d",
+                sseg->ss_base.us_btl_header->sender,
+                sseg->ss_base.us_btl_header->btl_header_flags);
+#endif
+    }
 
 #if MSGDEBUG1
     opal_output(0, "post_send ACK: type=%s, ep=%p, remote_addr=%p, addr=%p, len=%"
