@@ -678,7 +678,7 @@ static mca_btl_base_module_t** usnic_component_init(int* num_btl_modules,
        Someday, #2 may no longer be true, and we may therefore rip out
        the libfabric v1.0.0 compatibility code. */
     uint32_t libfabric_api;
-    libfabric_api = FI_VERSION(1, 1);
+    libfabric_api = FI_VERSION(1, 4);
     ret = fi_getinfo(libfabric_api, NULL, 0, 0, &hints, &info_list);
     if (0 != ret) {
         opal_output_verbose(5, USNIC_OUT,
@@ -730,12 +730,27 @@ static mca_btl_base_module_t** usnic_component_init(int* num_btl_modules,
         mca_btl_usnic_component.cq_readerr_success_value =
             sizeof(struct fi_cq_err_entry);
         mca_btl_usnic_component.cq_readerr_try_again_value = 0;
-    } else {
+    } else if(1 == FI_MAJOR(libfabric_api) &&
+              1 <= FI_MINOR(libfabric_api)) {
         // New fi_cq_readerr() behavior: success=1, try again=-FI_EAGAIN
         mca_btl_usnic_component.cq_readerr_success_value = 1;
         mca_btl_usnic_component.cq_readerr_try_again_value = -FI_EAGAIN;
-    }
+    } else if(1 == FI_MAJOR(libfabric_api) &&
+              4 <= FI_MINOR(libfabric_api)) {
 
+        /* From libfabric 1.4 onwards, they decided to swap fabric name
+         * and domain name for fun. :) */
+        info = info_list;
+        for (j = i = 0; i < num_devs &&
+        (0 == mca_btl_usnic_component.max_modules ||
+        i < mca_btl_usnic_component.max_modules);
+        ++i, info = info->next) {
+            char *tmp = info->fabric_attr->name;
+            info->fabric_attr->name = info->domain_attr->name;
+            info->domain_attr->name = tmp;
+
+        }
+    }
     /* libnl initialization */
     opal_proc_t *me = opal_proc_local_get();
     opal_process_name_t *name = &(me->proc_name);
