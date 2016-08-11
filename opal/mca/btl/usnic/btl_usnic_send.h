@@ -68,7 +68,7 @@ opal_btl_usnic_post_segment(
 
     /* If we have peer endpoint cached, put that in the sender field,
      * flip a flag to let the receiver know we are using their pointer */
-    if(endpoint->cached_endpoint){
+    if(OPAL_LIKELY(endpoint->cached_endpoint)){
         sseg->ss_base.us_btl_header->sender = endpoint->cached_endpoint;
         sseg->ss_base.us_btl_header->btl_header_flags |= OPAL_BTL_USNIC_HEADER_FLAG_ENDPOINT_CACHED;
 #ifdef MSGDEBUG3
@@ -132,7 +132,7 @@ opal_btl_usnic_post_ack(
 
     /* If we have peer endpoint cached, put that in the sender field,
      * flip a flag to let the receiver know we are using their pointer */
-    if(endpoint->cached_endpoint){
+    if(OPAL_LIKELY(endpoint->cached_endpoint)){
         sseg->ss_base.us_btl_header->sender = endpoint->cached_endpoint;
         sseg->ss_base.us_btl_header->btl_header_flags |= OPAL_BTL_USNIC_HEADER_FLAG_ENDPOINT_CACHED;
 #ifdef MSGDEBUG3
