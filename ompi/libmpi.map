@@ -688,6 +688,9 @@ global:
 	ompi_datatype_match_size;
 	ompi_datatype_number_of_predefined_data;
 	ompi_datatype_pack_description_length;
+	ompi_datatype_pack_external_size;
+	ompi_datatype_pack_external;
+	ompi_datatype_unpack_external;
 	ompi_datatype_print_args;
 	ompi_datatype_release_args;
 	ompi_datatype_set_args;
