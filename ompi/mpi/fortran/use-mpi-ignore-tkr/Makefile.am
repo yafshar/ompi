@@ -1,6 +1,6 @@
 # -*- makefile -*-
 #
-# Copyright (c) 2006-2015 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2006-2016 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2015      Research Organization for Information Science
 #                         and Technology (RIST). All rights reserved.
 #
@@ -12,6 +12,8 @@
 #
 
 include $(top_srcdir)/Makefile.ompi-rules
+
+EXTRA_DIST = libmpi_usempi_ignore_tkr.map
 
 # This Makefile is only relevant if we're building the ignore-TKR "use
 # mpi" MPI bindings.

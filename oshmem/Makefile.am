@@ -1,7 +1,7 @@
 #
 # Copyright (c) 2013-2015 Mellanox Technologies, Inc.
 #                         All rights reserved.
-# Copyright (c) 2013-2014 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2013-2016 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2014      Intel, Inc.  All rights reserved.
 # Copyright (c) 2015      Los Alamos National Security, LLC. All rights
 #                         reserved.
@@ -11,6 +11,8 @@
 #
 # $HEADER$
 #
+
+EXTRA_DIST = liboshmem.map
 
 # Do we have profiling?
 if OSHMEM_PROFILING

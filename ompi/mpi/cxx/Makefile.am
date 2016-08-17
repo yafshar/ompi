@@ -10,13 +10,15 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2007-2016 Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
 #
 # $HEADER$
 #
+
+EXTRA_DIST = libmpi_cxx.map
 
 # Need the first so that we can get the path names correct inside the
 # MPI C++ library.  The second is necessary so that mpi.h doesn't

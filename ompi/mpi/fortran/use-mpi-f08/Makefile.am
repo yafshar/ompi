@@ -1,6 +1,6 @@
 # -*- makefile -*-
 #
-# Copyright (c) 2006-2015 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2006-2016 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2012-2013 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
@@ -18,6 +18,8 @@
 #
 
 include $(top_srcdir)/Makefile.ompi-rules
+
+EXTRA_DIST = libmpi_usempif08.map
 
 # This Makefile is only relevant if we're building the "use mpi_f08"
 # MPI bindings.
