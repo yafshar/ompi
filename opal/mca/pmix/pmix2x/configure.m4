@@ -12,7 +12,7 @@
 #                         All rights reserved.
 # Copyright (c) 2011-2013 Los Alamos National Security, LLC.
 #                         All rights reserved.
-# Copyright (c) 2010-2016 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2010-2017 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2013-2017 Intel, Inc.  All rights reserved.
 # Copyright (c) 2015-2016 Research Organization for Information Science
 #                         and Technology (RIST). All rights reserved.
@@ -28,7 +28,7 @@
 AC_DEFUN([MCA_opal_pmix_pmix2x_CONFIG],[
     AC_CONFIG_FILES([opal/mca/pmix/pmix2x/Makefile])
 
-    OPAL_VAR_SCOPE_PUSH([PMIX_VERSION opal_pmix_pmix2x_save_CPPFLAGS opal_pmix_pmix2x_save_LDFLAGS opal_pmix_pmix2x_save_LIBS opal_pmix_pmix2x_basedir opal_pmix_pmix2x_save_cflags opal_pmix_pmix2x_sm_flag])
+    OPAL_VAR_SCOPE_PUSH([PMIX_VERSION opal_pmix_pmix2x_save_CPPFLAGS opal_pmix_pmix2_save_CFLAGS opal_pmix_pmix2x_save_LDFLAGS opal_pmix_pmix2x_save_LIBS opal_pmix_pmix2x_basedir opal_pmix_pmix2x_args opal_pmix_pmix2x_happy opal_pmix_pmix2x_sm_flag pmix_pmix2x_status_filename])
 
     opal_pmix_pmix2x_basedir=opal/mca/pmix/pmix2x
 
@@ -93,11 +93,16 @@ AC_DEFUN([MCA_opal_pmix_pmix2x_CONFIG],[
 
    # Finally, add some flags to the wrapper compiler so that our
    # headers can be found.
-   AC_MSG_CHECKING([extra wrapper libs])
    pmix_pmix2x_status_filename="$OPAL_TOP_BUILDDIR/$opal_pmix_pmix2x_basedir/pmix/config.status"
-   pmix_pmix2x_WRAPPER_EXTRA_LDFLAGS=`egrep PMIX_EMBEDDED_LDFLAGS $pmix_pmix2x_status_filename | cut -d\" -f4`
    pmix_pmix2x_WRAPPER_EXTRA_CPPFLAGS=`egrep PMIX_EMBEDDED_CPPFLAGS $pmix_pmix2x_status_filename | cut -d\" -f4`
+   pmix_pmix2x_WRAPPER_EXTRA_LDFLAGS=`egrep PMIX_EMBEDDED_LDFLAGS $pmix_pmix2x_status_filename | cut -d\" -f4`
    pmix_pmix2x_WRAPPER_EXTRA_LIBS=`egrep PMIX_EMBEDDED_LIBS $pmix_pmix2x_status_filename | cut -d\" -f4`
+
+   AC_MSG_CHECKING([PMIx extra wrapper CPPFLAGS])
+   AC_MSG_RESULT([$pmix_pmix2x_WRAPPER_EXTRA_CPPFLAGS])
+   AC_MSG_CHECKING([PMIx extra wrapper LDFLAGS])
+   AC_MSG_RESULT([$pmix_pmix2x_WRAPPER_EXTRA_LDFLAGS])
+   AC_MSG_CHECKING([PMIx extra wrapper LIBS])
    AC_MSG_RESULT([$pmix_pmix2x_WRAPPER_EXTRA_LIBS])
 
     AS_IF([test $opal_pmix_pmix2x_happy -eq 1],
