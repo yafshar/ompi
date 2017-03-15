@@ -32,6 +32,7 @@
 #include "opal/mca/timer/linux/timer_linux.h"
 #include "opal/constants.h"
 #include "opal/util/show_help.h"
+#include "opal/util/proc.h"
 
 static opal_timer_t opal_timer_linux_get_cycles_sys_timer(void);
 static opal_timer_t opal_timer_linux_get_usec_sys_timer(void);
@@ -102,13 +103,15 @@ find_info(FILE* fp, char *str, char *buf, size_t buflen)
     return NULL;
 }
 
-static int opal_timer_linux_find_freq(void)
+static int opal_timer_linux_find_freq(bool* constant_tsc)
 {
     FILE *fp;
     char *loc;
     float cpu_f;
     int ret;
     char buf[1024];
+
+    *constant_tsc = false;
 
     fp = fopen("/proc/cpuinfo", "r");
     if (NULL == fp) {
@@ -118,9 +121,15 @@ static int opal_timer_linux_find_freq(void)
     opal_timer_linux_freq = 0;
 
 #if OPAL_ASSEMBLY_ARCH == OPAL_ARM64
-	opal_timer_linux_freq = opal_sys_timer_freq();
+    opal_timer_linux_freq = opal_sys_timer_freq();
 #endif
 
+    loc = find_info(fp, "flags", buf, 1024);
+    if (NULL != loc) {
+        if (NULL != strstr(loc, "constant_tsc")) {
+            *constant_tsc = true;
+        }
+    }
     if (0 == opal_timer_linux_freq) {
         /* first, look for a timebase field.  probably only on PPC,
            but one never knows */
@@ -169,26 +178,78 @@ static int opal_timer_linux_find_freq(void)
 
 int opal_timer_linux_open(void)
 {
-    int ret = OPAL_SUCCESS;
+    bool constant_tsc = false;
+    bool want_clock_gettime = false;
+    bool want_sys_timer = false;
 
-    if (mca_timer_base_monotonic && !opal_sys_timer_is_monotonic ()) {
-#if OPAL_HAVE_CLOCK_GETTIME && (0 == OPAL_TIMER_MONOTONIC)
-        struct timespec res;
-        if( 0 == clock_getres(CLOCK_MONOTONIC, &res)) {
-            opal_timer_linux_freq = 1.e3;
-            opal_timer_base_get_cycles = opal_timer_linux_get_cycles_clock_gettime;
-            opal_timer_base_get_usec = opal_timer_linux_get_usec_clock_gettime;
-            return ret;
+    // Find out the system clock frequency, and if it is constant.
+    opal_timer_linux_find_freq(&constant_tsc);
+
+    // The logic block below could likely be reduced to a simpler
+    // expression.  It is kept expanded to explicitly show all 4
+    // cases, just for simplicity / ease of reading the code.
+    // Additionally, this code is executed during startup; it's not
+    // worth optimizing down to a minimal set of comparisons.
+
+    // Has the user requested (via MCA param) a monontonic timer?
+    if (mca_timer_base_monotonic) {
+        // If the system timer is monotonic and its frequency is
+        // constant, use it.
+        if (opal_sys_timer_is_monotonic() && constant_tsc) {
+            want_sys_timer = true;
         }
-#else
-        /* Monotonic time requested but cannot be found. Complain! */
-        opal_show_help("help-opal-timer-linux.txt", "monotonic not supported", true);
-#endif  /* OPAL_HAVE_CLOCK_GETTIME && (0 == OPAL_TIMER_MONOTONIC) */
+        // Otherwise, fall back to clock_gettime().
+        else {
+            want_clock_gettime = true;
+        }
     }
-    ret = opal_timer_linux_find_freq();
-    opal_timer_base_get_cycles = opal_timer_linux_get_cycles_sys_timer;
-    opal_timer_base_get_usec = opal_timer_linux_get_usec_sys_timer;
-    return ret;
+    // If the user did not request a monotonic timer...
+    else {
+        // Only use the system timer if it is constant
+        if (constant_tsc) {
+            want_sys_timer = true;
+        }
+        // Otherwise, fall back to clock_gettime()
+        else {
+            want_clock_gettime = true;
+        }
+    }
+
+    // It's not possible to fall through the above without one of
+    // want_sys_timer or want_clock_gettime being true.
+
+    // Setup clock_gettime (if possible)
+    if (want_clock_gettime) {
+#if OPAL_HAVE_CLOCK_GETTIME
+        // Ensure that clock_gettime() is usable.  We only use
+        // CLOCK_MONOTONIC (even if mca_timer_base_monotonic is
+        // false).
+        struct timespec res;
+        if (0 == clock_getres(CLOCK_MONOTONIC, &res)) {
+            opal_timer_linux_freq = 1.e3;
+            opal_timer_base_get_cycles =
+                opal_timer_linux_get_cycles_clock_gettime;
+            opal_timer_base_get_usec =
+                opal_timer_linux_get_usec_clock_gettime;
+            return OPAL_SUCCESS;
+        }
+#endif
+    }
+
+    // Setup the system timer
+    else if (want_sys_timer) {
+        opal_timer_base_get_cycles =
+            opal_timer_linux_get_cycles_sys_timer;
+        opal_timer_base_get_usec =
+            opal_timer_linux_get_usec_sys_timer;
+        return OPAL_SUCCESS;
+    }
+
+    // If we get here, then no timer was set.
+    opal_show_help("help-opal-timer-linux.txt",
+                   "unable to setup a timer", true,
+                   opal_process_info.nodename);
+    return OPAL_ERR_NOT_SUPPORTED;
 }
 
 #if OPAL_HAVE_CLOCK_GETTIME

@@ -3,6 +3,7 @@
 # Copyright (c) 2014      The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
+# Copyright (c) 2017      Cisco Systems, Inc.  All rights reserved
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -11,7 +12,8 @@
 #
 # This is the US/English help file for Open MPI's Linux timer support.
 #
-[monotonic not supported]
-A monotonic timer has been requested by the user, but could not be found on the
-system. Falling back to a non-monotonic timer (such as RDTSC).
+[unable to setup a timer]
+Open MPI was unable to setup a timer.  This is highly unusual, and
+likely indicates a problem with this machine.
 
+    Local host: %s
