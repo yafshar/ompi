@@ -184,6 +184,9 @@ int opal_timer_linux_open(void)
 
     // Find out the system clock frequency, and if it is constant.
     opal_timer_linux_find_freq(&constant_tsc);
+    opal_output_verbose(5, opal_timer_base_framework.framework_output,
+                        "timer:linux: constant TSC: %d",
+                        (int) constant_tsc);
 
     // The logic block below could likely be reduced to a simpler
     // expression.  It is kept expanded to explicitly show all 4
@@ -193,6 +196,9 @@ int opal_timer_linux_open(void)
 
     // Has the user requested (via MCA param) a monontonic timer?
     if (mca_timer_base_monotonic) {
+        opal_output_verbose(5, opal_timer_base_framework.framework_output,
+                            "timer:linux: want monontonic timer");
+
         // If the system timer is monotonic and its frequency is
         // constant, use it.
         if (opal_sys_timer_is_monotonic() && constant_tsc) {
@@ -205,6 +211,9 @@ int opal_timer_linux_open(void)
     }
     // If the user did not request a monotonic timer...
     else {
+        opal_output_verbose(5, opal_timer_base_framework.framework_output,
+                            "timer:linux: don't care about monontonic timer");
+
         // Only use the system timer if it is constant
         if (constant_tsc) {
             want_sys_timer = true;
@@ -220,6 +229,9 @@ int opal_timer_linux_open(void)
 
     // Setup clock_gettime (if possible)
     if (want_clock_gettime) {
+        opal_output_verbose(5, opal_timer_base_framework.framework_output,
+                            "timer:linux: setting up clock_gettime");
+
 #if OPAL_HAVE_CLOCK_GETTIME
         // Ensure that clock_gettime() is usable.  We only use
         // CLOCK_MONOTONIC (even if mca_timer_base_monotonic is
@@ -232,12 +244,21 @@ int opal_timer_linux_open(void)
             opal_timer_base_get_usec =
                 opal_timer_linux_get_usec_clock_gettime;
             return OPAL_SUCCESS;
+        } else {
+            opal_output_verbose(5, opal_timer_base_framework.framework_output,
+                                "timer:linux: clock_getres() failed");
         }
+#else
+        opal_output_verbose(5, opal_timer_base_framework.framework_output,
+                            "timer:linux: no clock_gettime() on this platform");
 #endif
     }
 
     // Setup the system timer
     else if (want_sys_timer) {
+        opal_output_verbose(5, opal_timer_base_framework.framework_output,
+                            "timer:linux: setting up system timer");
+
         opal_timer_base_get_cycles =
             opal_timer_linux_get_cycles_sys_timer;
         opal_timer_base_get_usec =
