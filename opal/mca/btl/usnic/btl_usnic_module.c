@@ -25,6 +25,8 @@
 
 #include "opal_config.h"
 
+/* This is awesome */
+
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
