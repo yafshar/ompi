@@ -11,6 +11,7 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2017      Intel, Inc. All rights reserved.
+# Copyright (c) 2017      Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -20,9 +21,9 @@
 # This is the US/English general help file for the SDS base.
 #
 [ess-base:execv-error]
-The singleton application was not able to find the executable "orted" in
-your PATH or in the directory where Open MPI/OpenRTE was initially installed,
-and therefore cannot continue.
+The singleton application was not able to find the executable "orted"
+in your PATH or in the directory where Open MPI/OpenRTE was initially
+installed, and therefore cannot continue.
 
 For reference, we tried the following command:
 
@@ -30,9 +31,10 @@ For reference, we tried the following command:
 
 and got the error %s.
 
-This could mean that your PATH or executable name is wrong, or that you do not
-have the necessary permissions.  Please ensure that the executable is able to be
-found and executed as it is required for singleton operations.
+This could mean that your PATH or executable name is wrong, or that
+you do not have the necessary permissions.  Please ensure that the
+executable is able to be found and executed as it is required for
+singleton operations.
 [ess-base:cannot-forward]
 The system does not support trapping and forwarding of the
 specified signal:
