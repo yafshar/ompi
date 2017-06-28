@@ -53,8 +53,8 @@ MCA parameter:
 This is not a recognized signal value. Please fix or remove it.
 #
 [slurm-error]
-The application appears to have been direct launched using "srun",
-but OMPI was not built with SLURM's PMI support and therefore cannot
+The application appears to have been direct launched using "srun", but
+Open MPI was not built with SLURM's PMI support and therefore cannot
 execute. There are several options for building PMI support under
 SLURM, depending upon the SLURM version you are using:
 
@@ -69,25 +69,25 @@ SLURM, depending upon the SLURM version you are using:
 Please configure as appropriate and try again.
 #
 [slurm-error2]
-The application appears to have been direct launched using "srun",
-but OMPI was not built with SLURM support. This usually happens
-when OMPI was not configured --with-slurm and we weren't able
-to discover a SLURM installation in the usual places.
+The application appears to have been direct launched using "srun", but
+Open MPI was not built with SLURM support. This usually happens when
+Open MPI was not configured --with-slurm and we weren't able to
+discover a SLURM installation in the usual places.
 
 Please configure as appropriate and try again.
 #
 [alps-error]
 The application appears to have been direct launched using "aprun",
-but OMPI was not built with ALPS PMI support and therefore cannot
-execute. You must build Open MPI using --with-pmi pointing
-to the ALPS PMI library location.
+but Open MPI was not built with ALPS PMI support and therefore cannot
+execute. You must build Open MPI using --with-pmi pointing to the ALPS
+PMI library location.
 
 Please configure as appropriate and try again.
 #
 [alps-error2]
 The application appears to have been direct launched using "aprun",
-but OMPI was not built with ALPS support. This usually happens
-when OMPI was not configured --with-alps and we weren't able
-to discover an ALPS installation in the usual places.
+but Open MPI was not built with ALPS support. This usually happens
+when Open MPI was not configured --with-alps and we weren't able to
+discover an ALPS installation in the usual places.
 
 Please configure as appropriate and try again.
